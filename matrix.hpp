@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 class Matrix {
   int nR, nC;
   float** values;
@@ -32,6 +34,17 @@ public:
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
         values[i][j] = 1;
+      }
+    }
+    return this;
+  }
+
+  Matrix* setUniform(float low, float high) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        float randomNumber = (float) rand() / RAND_MAX;
+        randomNumber = low + randomNumber * (high - low);
+        values[i][j] = randomNumber;
       }
     }
     return this;

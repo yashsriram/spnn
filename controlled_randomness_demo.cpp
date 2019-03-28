@@ -3,6 +3,7 @@
 #include "matrix.hpp"
 
 int main() {
+  /* set random seed; this controls randomness */
   srand(42);
 
   Matrix A = Matrix(3, 2);

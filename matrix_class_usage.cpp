@@ -21,6 +21,10 @@ int main() {
     Matrix D = C;
     D.at(1, 1) = 10;
     std::cout << D << std::endl;
+    Matrix E(2, 3, "E");
+    E.setOnes();
+    Matrix F = A * E;
+    std::cout << F << std::endl;
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

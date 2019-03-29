@@ -22,9 +22,10 @@ int main() {
     Matrix DIFF = A - B;
     std::cout << DIFF << std::endl;
 
-    Matrix SUM_COPY = SUM;
-    SUM_COPY.at(1, 1) = 10;
-    std::cout << SUM_COPY << std::endl;
+    Matrix SUM_DEEP_COPY = SUM;
+    SUM_DEEP_COPY.at(1, 1) = 10;
+    std::cout << SUM_DEEP_COPY << std::endl;
+    std::cout << SUM << std::endl;
 
     Matrix E(2, 3, "E");
     E.setOnes();

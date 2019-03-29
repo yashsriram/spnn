@@ -1,20 +1,46 @@
 #include <stdlib.h>
+#include <sstream>
 
 class Matrix {
-  int nR, nC;
+  const std::string name;
+  const int nR, nC;
   float** values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
+  void operator=(Matrix const &m) {
+    /* = operator is completely disabled to ensure simplicity */
+    std::stringstream ss;
+    ss <<  "Invalid operation: Attempt to assign a matrix " << m.name.c_str() << " to another matrix";
+    throw ss.str();
+  }
+
 public:
 
-  Matrix(int r, int c): nR(r), nC(c) {
+  Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
+    printf("Matrix %s: constructor called\n", name.c_str());
     values = new float*[nR];
     for (int i = 0; i < nR; ++i) {
       values[i] = new float[nC];
     }
   }
 
+  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(m.name) {
+    printf("Matrix %s: copy constructor called\n", name.c_str());
+    // allocate heap for values variable
+    values = new float*[nR];
+    for (int i = 0; i < nR; ++i) {
+      values[i] = new float[nC];
+    }
+    // deep copy the values variable
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        values[i][j] = m.values[i][j];
+      }
+    }
+  }
+
   ~Matrix() {
+    printf("Matrix %s: destructor is called\n", name.c_str());
     for (int i = 0; i < nR; ++i) {
       delete[] values[i];
     }
@@ -48,6 +74,24 @@ public:
       }
     }
     return this;
+  }
+
+  Matrix operator+(Matrix const &m) {
+    if (nR != m.nR || nC != m.nC) {
+      std::stringstream ss;
+      ss <<  "Invalid dimensions for matrix addition: Candidates are matrices " << name << " and " << m.name;
+      throw ss.str();
+    }
+
+    std::stringstream ss;
+    ss << name << " + " << m.name;
+    Matrix result(m.nR, m.nC, ss.str());
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = this->values[i][j] + m.values[i][j];
+      }
+    }
+    return result;
   }
 
 };

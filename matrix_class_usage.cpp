@@ -32,6 +32,8 @@ int main() {
     Matrix MUL = A * E;
     std::cout << MUL << std::endl;
 
+    Matrix TRANSPOSE = ~B;
+    std::cout << TRANSPOSE << std::endl;
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

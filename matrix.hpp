@@ -90,6 +90,20 @@ public:
     return values[i][j];
   }
 
+  Matrix operator~() {
+    std::stringstream ss;
+    ss << "(" << name << ")_Transpose";
+    Matrix result(nC, nR, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[j][i] = this->values[i][j];
+      }
+    }
+
+    return result;
+  }
+
   Matrix operator+(Matrix const &m) {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
@@ -102,7 +116,7 @@ public:
 
     std::stringstream ss;
     ss << name << " + " << m.name;
-    Matrix result(m.nR, m.nC, ss.str());
+    Matrix result(nR, nC, ss.str());
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -125,7 +139,7 @@ public:
 
     std::stringstream ss;
     ss << name << " - " << m.name;
-    Matrix result(m.nR, m.nC, ss.str());
+    Matrix result(nR, nC, ss.str());
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {

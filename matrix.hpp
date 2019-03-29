@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <sstream>
 
@@ -17,15 +18,15 @@ class Matrix {
 public:
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
-    printf("Matrix %s: constructor called\n", name.c_str());
+    spdlog::info("Matrix {}: constructor called", name.c_str());
     values = new float*[nR];
     for (int i = 0; i < nR; ++i) {
       values[i] = new float[nC];
     }
   }
 
-  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(m.name) {
-    printf("Matrix %s: copy constructor called\n", name.c_str());
+  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(m.name + "_copy") {
+    spdlog::warn("Matrix {}: copy constructor called", name.c_str());
     // allocate heap for values variable
     values = new float*[nR];
     for (int i = 0; i < nR; ++i) {
@@ -40,7 +41,7 @@ public:
   }
 
   ~Matrix() {
-    printf("Matrix %s: destructor is called\n", name.c_str());
+    spdlog::info("Matrix {}: destructor is called", name.c_str());
     for (int i = 0; i < nR; ++i) {
       delete[] values[i];
     }

@@ -12,13 +12,14 @@ int main() {
   std::cout << A << std::endl;
 
   Matrix B(3, 2, "B");
-  B.setOnes();
+  B.setIdentity();
   std::cout << B << std::endl;
 
   try {
     Matrix C = A + B;
     std::cout << C << std::endl;
-    Matrix D = A;
+    Matrix D = C;
+    std::cout << D.at(1, 1) << std::endl;
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

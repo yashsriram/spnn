@@ -25,7 +25,7 @@ public:
     }
   }
 
-  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(m.name + "_copy") {
+  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name("(" + m.name + ")_copy") {
     spdlog::warn("Matrix {}: copy constructor called", name.c_str());
     // allocate heap for values variable
     values = new float*[nR];
@@ -41,7 +41,7 @@ public:
   }
 
   ~Matrix() {
-    spdlog::info("Matrix {}: destructor is called", name.c_str());
+    spdlog::info("Matrix {}: destructor called", name.c_str());
     for (int i = 0; i < nR; ++i) {
       delete[] values[i];
     }
@@ -66,6 +66,15 @@ public:
     return this;
   }
 
+  Matrix* setIdentity() {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        values[i][j] = (i == j);
+      }
+    }
+    return this;
+  }
+
   Matrix* setUniform(float low, float high) {
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -75,6 +84,10 @@ public:
       }
     }
     return this;
+  }
+
+  float at(const int& i, const int& j) {
+    return values[i][j];
   }
 
   Matrix operator+(Matrix const &m) {

@@ -16,15 +16,21 @@ int main() {
   std::cout << B << std::endl;
 
   try {
-    Matrix C = A + B;
-    std::cout << C << std::endl;
-    Matrix D = C;
-    D.at(1, 1) = 10;
-    std::cout << D << std::endl;
+    Matrix SUM = A + B;
+    std::cout << SUM << std::endl;
+
+    Matrix DIFF = A - B;
+    std::cout << DIFF << std::endl;
+
+    Matrix SUM_COPY = SUM;
+    SUM_COPY.at(1, 1) = 10;
+    std::cout << SUM_COPY << std::endl;
+
     Matrix E(2, 3, "E");
     E.setOnes();
-    Matrix F = A * E;
-    std::cout << F << std::endl;
+    Matrix MUL = A * E;
+    std::cout << MUL << std::endl;
+
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

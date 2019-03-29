@@ -7,15 +7,15 @@ int main() {
   srand(42);
   spdlog::set_pattern("[%^%l%$][%t][%H:%M:%S.%f] %v");
 
-  Matrix A(3, 2, "A");
-  A.setOnes();
-  std::cout << A << std::endl;
-
-  Matrix B(3, 2, "B");
-  B.setIdentity();
-  std::cout << B << std::endl;
-
   try {
+    Matrix A(3, 2, "A");
+    A.setOnes();
+    std::cout << A << std::endl;
+
+    Matrix B(3, 2, "B");
+    B.setIdentity();
+    std::cout << B << std::endl;
+
     Matrix SUM = A + B;
     std::cout << SUM << std::endl;
 
@@ -34,6 +34,22 @@ int main() {
 
     Matrix TRANSPOSE = ~B;
     std::cout << TRANSPOSE << std::endl;
+
+    Matrix input(3, 4, "input");
+    input.setOnes();
+    std::cout << input << std::endl;
+
+    Matrix weights(4, 5, "weights");
+    weights.setOnes();
+    std::cout << weights << std::endl;
+
+    Matrix bias(3, 5, "bias");
+    bias.setIdentity();
+    std::cout << bias << std::endl;
+
+    Matrix output = input * weights + bias;
+    std::cout << output << std::endl;
+
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

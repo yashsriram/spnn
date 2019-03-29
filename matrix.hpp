@@ -93,24 +93,57 @@ public:
   Matrix operator+(Matrix const &m) {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
-      ss <<  "Invalid dimensions for matrix addition: Candidates are matrices " << name << " and " << m.name;
+      ss <<  "Invalid dimensions for matrix addition: Candidates are matrices "
+        << name << "(" << nR << "," << nC << ")"
+        << " and "
+        << m.name << "(" << m.nR << "," << m.nC << ")";
       throw ss.str();
     }
 
     std::stringstream ss;
     ss << name << " + " << m.name;
     Matrix result(m.nR, m.nC, ss.str());
+
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
         result.values[i][j] = this->values[i][j] + m.values[i][j];
       }
     }
+
+    return result;
+  }
+
+  Matrix operator*(Matrix const &m) {
+    if (nC != m.nR) {
+      std::stringstream ss;
+      ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
+        << name << "(" << nR << "," << nC << ")"
+        << " and "
+        << m.name << "(" << m.nR << "," << m.nC << ")";
+      throw ss.str();
+    }
+
+    std::stringstream ss;
+    ss << name << " * " << m.name;
+    Matrix result(nR, m.nC, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < m.nC; ++j) {
+        float elementSum = 0;
+        for (int k = 0; k < nC; ++k) {
+          elementSum += this->values[i][k] * m.values[k][j];
+        }
+        result.values[i][j] = elementSum;
+      }
+    }
+
     return result;
   }
 
 };
 
 std::ostream& operator<<(std::ostream &out, const Matrix &m) {
+  out << m.name << " of shape: (" << m.nR << "," << m.nC << ") is\n";
   for (int i = 0; i < m.nR; ++i) {
     for (int j = 0; j < m.nC; ++j) {
       out << m.values[i][j] << " ";

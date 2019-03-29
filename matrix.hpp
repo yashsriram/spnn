@@ -86,7 +86,7 @@ public:
     return this;
   }
 
-  float at(const int& i, const int& j) {
+  float& at(const int& i, const int& j) {
     return values[i][j];
   }
 

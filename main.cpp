@@ -19,7 +19,8 @@ int main() {
     Matrix C = A + B;
     std::cout << C << std::endl;
     Matrix D = C;
-    std::cout << D.at(1, 1) << std::endl;
+    D.at(1, 1) = 10;
+    std::cout << D << std::endl;
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

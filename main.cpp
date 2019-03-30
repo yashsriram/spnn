@@ -7,21 +7,22 @@ int main() {
   srand(42);
   spdlog::set_pattern("[%^%l%$][%t][%H:%M:%S.%f] %v");
 
-  Matrix input(3, 4, "input");
-  input.setOnes();
-  std::cout << input << std::endl;
-
-  Matrix weights(4, 5, "weights");
-  weights.setOnes();
-  std::cout << weights << std::endl;
-
-  Matrix bias(3, 5, "bias");
-  bias.setIdentity();
-  std::cout << bias << std::endl;
-
   try {
+    Matrix input(3, 4, "input");
+    input.setOnes();
+    std::cout << input << std::endl;
+
+    Matrix weights(4, 5, "weights");
+    weights.setOnes();
+    std::cout << weights << std::endl;
+
+    Matrix bias(3, 5, "bias");
+    bias.setIdentity();
+    std::cout << bias << std::endl;
+
     Matrix output = input * weights + bias;
     std::cout << output << std::endl;
+
   } catch (std::string e) {
     spdlog::error(e);
   }

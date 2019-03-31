@@ -2,11 +2,13 @@
 #define MATRIX_HPP
 
 #include <spdlog/spdlog.h>
+#include <math.h>
 #include <stdlib.h>
 #include <sstream>
 #include <vector>
 
 class Matrix {
+  std::string name;
   std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
@@ -18,7 +20,6 @@ class Matrix {
   }
 
 public:
-  const std::string name;
   const int nR, nC;
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
@@ -48,6 +49,15 @@ public:
   }
 
   int getNumElements() { return nR * nC; }
+
+  float& at(const int& i, const int& j) {
+    return values[i][j];
+  }
+
+  Matrix* setName(const std::string& name) {
+    this->name = name;
+    return this;
+  }
 
   Matrix* setZeros() {
     for (int i = 0; i < nR; ++i) {
@@ -87,8 +97,18 @@ public:
     return this;
   }
 
-  float& at(const int& i, const int& j) {
-    return values[i][j];
+  Matrix sigmoid()  {
+    std::stringstream ss;
+    ss << "(" << name << ")_SigmoidActivation";
+    Matrix result(nR, nC, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = 1 / (1 + exp(-this->values[i][j]));
+      }
+    }
+
+    return result;
   }
 
   Matrix operator~() {

@@ -2,7 +2,6 @@
 #define NN_HPP
 
 #include "matrix.hpp"
-#include <math.h>
 #include <vector>
 
 class FullyConnectedNetwork {
@@ -29,38 +28,39 @@ class FullyConnectedNetwork {
 
     int numTrainableParams = 0;
     for(int i = 0; i < layerDims.size() - 1; i++) {
-      std::stringstream weightsMatrixName;
-      weightsMatrixName << "weight_" << i;
-      weights.push_back(Matrix(layerDims[i], layerDims[i + 1], weightsMatrixName.str()));
+      weights.push_back(Matrix(layerDims[i], layerDims[i + 1]));
       weights[i].setUniform(-1, 1);
 
-      std::stringstream biasesMatrixName;
-      biasesMatrixName << "bias_" << i;
-      biases.push_back(Matrix(1, layerDims[i + 1], biasesMatrixName.str()));
+      biases.push_back(Matrix(1, layerDims[i + 1]));
       biases[i].setZeros();
 
       numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
     }
     spdlog::info("Total number of trainable parameters : {}", numTrainableParams);
 
-    isCompiled = true;
-  }
+    for(int i = 0; i < weights.size(); i++) {
+      std::stringstream name;
+      name << "weight_" << i;
+      weights[i].setName(name.str());
+    }
 
-  float sigmoid(float x)  {
-    float exp_value = exp((float) -x);
-    return (1 / (1 + exp_value));
+    for(int i = 0; i < biases.size(); i++) {
+      std::stringstream name;
+      name << "bias_" << i;
+      biases[i].setName(name.str());
+    }
+
+    isCompiled = true;
   }
 
   /* Matrix forwardPass(const Matrix& inputMatrix) { */
   /*   // TODO: forward pass */
-  /*   Matrix prev = inputMatrix; */
+  /*   Matrix in = inputMatrix; */
   /*   for(int i=0; i<=nLayers; i++){ */
-  /*     Matrix cur = prev*weights[i]; */
-  /*     cur = cur.sigmoid(); //add sigmoid to matrix class */
-  /*     cur = cur + biases[i]; */
-  /*     prev = cur; */
+  /*     Matrix out = (in * weights[i] + biases[i]).sigmoid(); */
+  /*     in = out; */
   /*   } */
-  /*   return prev; */
+  /*   return in; */
   /* } */
 
 };

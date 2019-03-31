@@ -21,6 +21,12 @@ class FullyConnectedNetwork {
   }
 
   void compile() {
+    if (layerDims.size() <= 1) {
+      std::stringstream ss;
+      ss <<  "Attempt to compile a neural net with <= 1 layers";
+      throw ss.str();
+    }
+
     if (isCompiled) {
       spdlog::warn("Attempt to compile neural net multiple times!");
       return;
@@ -53,15 +59,17 @@ class FullyConnectedNetwork {
     isCompiled = true;
   }
 
-  /* Matrix forwardPass(const Matrix& inputMatrix) { */
-  /*   // TODO: forward pass */
-  /*   Matrix in = inputMatrix; */
-  /*   for(int i=0; i<=nLayers; i++){ */
-  /*     Matrix out = (in * weights[i] + biases[i]).sigmoid(); */
-  /*     in = out; */
-  /*   } */
-  /*   return in; */
-  /* } */
+  Matrix forwardPass(const Matrix& inputMatrix) {
+    Matrix* in = new Matrix(inputMatrix);
+    for(int i = 0; i < weights.size(); i++) {
+      Matrix out = (*in * weights[i] + biases[i]).sigmoid();
+      delete in;
+      in = new Matrix(out);
+    }
+    Matrix result = *in;
+    delete in;
+    return result;
+  }
 
 };
 

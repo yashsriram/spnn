@@ -15,7 +15,12 @@ int main() {
     fnn.addLayer(30);
     fnn.addLayer(10);
     fnn.compile();
-    fnn.compile();
+
+    Matrix in(1, 728, "input");
+    in.setOnes();
+    std::cout << in << std::endl;
+    Matrix out = fnn.forwardPass(in);
+    std::cout << out << std::endl;
 
   } catch (std::string e) {
     spdlog::error(e);

@@ -15,6 +15,7 @@ int main() {
     fnn.addLayer(30);
     fnn.addLayer(10);
     fnn.compile();
+    fnn.compile();
 
   } catch (std::string e) {
     spdlog::error(e);

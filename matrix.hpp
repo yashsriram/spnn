@@ -22,7 +22,7 @@ public:
   const int nR, nC;
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
-    spdlog::info("Matrix {}: constructor called", name.c_str());
+    spdlog::debug("Matrix {}: constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
       row.resize(nC);
@@ -44,7 +44,7 @@ public:
   }
 
   ~Matrix() {
-    spdlog::info("Matrix {}: destructor called", name.c_str());
+    spdlog::debug("Matrix {}: destructor called", name.c_str());
   }
 
   int getNumElements() { return nR * nC; }

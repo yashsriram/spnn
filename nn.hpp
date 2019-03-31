@@ -9,10 +9,11 @@ class FullyConnectedNetwork {
   std::vector<int> layerDims;
   std::vector<Matrix> weights;
   std::vector<Matrix> biases;
+  bool isCompiled;
 
   public:
 
-  FullyConnectedNetwork() {}
+  FullyConnectedNetwork() : isCompiled(false) {}
 
   ~FullyConnectedNetwork() {}
 
@@ -21,6 +22,11 @@ class FullyConnectedNetwork {
   }
 
   void compile() {
+    if (isCompiled) {
+      spdlog::warn("Attempt to compile neural net multiple times!");
+      return;
+    }
+
     int numTrainableParams = 0;
     for(int i = 0; i < layerDims.size() - 1; i++) {
       std::stringstream weightsMatrixName;
@@ -35,7 +41,9 @@ class FullyConnectedNetwork {
 
       numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
     }
-    std::cout << "Total number of trainable parameters : " << numTrainableParams << std::endl;
+    spdlog::info("Total number of trainable parameters : {}", numTrainableParams);
+
+    isCompiled = true;
   }
 
   float sigmoid(float x)  {

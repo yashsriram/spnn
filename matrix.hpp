@@ -1,11 +1,12 @@
+#ifndef MATRIX_HPP
+#define MATRIX_HPP
+
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <sstream>
 #include <vector>
 
 class Matrix {
-  const std::string name;
-  const int nR, nC;
   std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
@@ -17,6 +18,8 @@ class Matrix {
   }
 
 public:
+  const std::string name;
+  const int nR, nC;
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
     spdlog::info("Matrix {}: constructor called", name.c_str());
@@ -43,6 +46,8 @@ public:
   ~Matrix() {
     spdlog::info("Matrix {}: destructor called", name.c_str());
   }
+
+  int getNumElements() { return nR * nC; }
 
   Matrix* setZeros() {
     for (int i = 0; i < nR; ++i) {
@@ -185,3 +190,5 @@ std::ostream& operator<<(std::ostream &out, const Matrix &m) {
   }
   return out;
 }
+
+#endif

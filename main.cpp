@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include "matrix.hpp"
+#include "nn.hpp"
 
 int main() {
   srand(42);
@@ -9,20 +10,11 @@ int main() {
   spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
 
   try {
-    Matrix input(3, 4, "input");
-    input.setOnes();
-    std::cout << input << std::endl;
-
-    Matrix weights(4, 5, "weights");
-    weights.setOnes();
-    std::cout << weights << std::endl;
-
-    Matrix bias(3, 5, "bias");
-    bias.setIdentity();
-    std::cout << bias << std::endl;
-
-    Matrix output = input * weights + bias;
-    std::cout << output << std::endl;
+    auto fnn = FullyConnectedNetwork();
+    fnn.addLayer(728);
+    fnn.addLayer(30);
+    fnn.addLayer(10);
+    fnn.compile();
 
   } catch (std::string e) {
     spdlog::error(e);

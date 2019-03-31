@@ -1,64 +1,60 @@
+#ifndef NN_HPP
+#define NN_HPP
+
 #include "matrix.hpp"
 #include <math.h>
+#include <vector>
 
-// Activations are all sigmoid
 class FullyConnectedNetwork {
-  // TODO maintain required weight and bias matrices
-  const int inputLayerSize,	outputLayerSize;
-  int nLayers = 0;
-  vector<int> layers;
-  vector<Matrix> weights;
-  vector<Matrix> bias;
+  std::vector<int> layerDims;
+  std::vector<Matrix> weights;
+  std::vector<Matrix> biases;
 
   public:
 
-  FullyConnectedNetwork(int inputLayer, int outputLayer) {
-  	inputLayerSize = inputLayer;
-  	outputLayerSize = outputLayer;
-  }
+  FullyConnectedNetwork() {}
 
   ~FullyConnectedNetwork() {}
 
-  void addLayer(int numberOfNodes) {
-    // TODO: just keep track of layer meta data
-  	nLayers++;
-  	layers.push_back(numberOfNodes);
+  void addLayer(int layerDim) {
+    layerDims.push_back(layerDim);
   }
 
   void compile() {
-    // TODO: using meta data alloc and init required matrices
-  	int prevsize = inputLayerSize;
-  	for(int i=0; i<=nLayers; i++){
-  		if(i==nLayers){
-  			weights.push_back(Matrix(prevsize,outputLayerSize));
-  			weights[i].setZeros();
-  			bias.push_back(Matrix(1,outputLayerSize));
-	  		bias[i].setZeros();
-  			break;
-  		}
-  		weights.push_back(Matrix(prevsize,layers[i]));
-  		weights[i].setZeros();
-  		bias.push_back(Matrix(1,layers[i]));
-  		bias[i].setZeros();
-  		prevsize = layers[i];
-  	}
+    int numTrainableParams = 0;
+    for(int i = 0; i < layerDims.size() - 1; i++) {
+      std::stringstream weightsMatrixName;
+      weightsMatrixName << "weight_" << i;
+      weights.push_back(Matrix(layerDims[i], layerDims[i + 1], weightsMatrixName.str()));
+      weights[i].setUniform(-1, 1);
+
+      std::stringstream biasesMatrixName;
+      biasesMatrixName << "bias_" << i;
+      biases.push_back(Matrix(1, layerDims[i + 1], biasesMatrixName.str()));
+      biases[i].setZeros();
+
+      numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
+    }
+    std::cout << "Total number of trainable parameters : " << numTrainableParams << std::endl;
   }
 
   float sigmoid(float x)  {
-	float exp_value = exp((float) -x);
-	return (1 / (1 + exp_value));
+    float exp_value = exp((float) -x);
+    return (1 / (1 + exp_value));
   }
 
-  Matrix forwardPass(const Matrix& inputMatrix) {
-    // TODO: forward pass
-    Matrix prev = inputMatrix;
-  	for(int i=0; i<=nLayers; i++){
-  		Matrix cur = prev*weights[i];
-  		cur = cur.sigmoid(); //add sigmoid to matrix class
-  		cur = cur + bias[i];
-  		prev = cur;
-  	}
-  	return prev;
-  }
+  /* Matrix forwardPass(const Matrix& inputMatrix) { */
+  /*   // TODO: forward pass */
+  /*   Matrix prev = inputMatrix; */
+  /*   for(int i=0; i<=nLayers; i++){ */
+  /*     Matrix cur = prev*weights[i]; */
+  /*     cur = cur.sigmoid(); //add sigmoid to matrix class */
+  /*     cur = cur + biases[i]; */
+  /*     prev = cur; */
+  /*   } */
+  /*   return prev; */
+  /* } */
 
-}
+};
+
+#endif

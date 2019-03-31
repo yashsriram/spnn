@@ -5,7 +5,8 @@
 
 int main() {
   srand(42);
-  spdlog::set_pattern("[%^%l%$][%t][%H:%M:%S.%f] %v");
+  spdlog::set_level(spdlog::level::debug);
+  spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
 
   try {
     Matrix input(3, 4, "input");

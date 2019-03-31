@@ -1,11 +1,12 @@
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <sstream>
+#include <vector>
 
 class Matrix {
   const std::string name;
   const int nR, nC;
-  float** values;
+  std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
   void operator=(Matrix const &m) {
@@ -19,18 +20,17 @@ public:
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
     spdlog::info("Matrix {}: constructor called", name.c_str());
-    values = new float*[nR];
-    for (int i = 0; i < nR; ++i) {
-      values[i] = new float[nC];
+    values.resize(nR);
+    for (auto& row: values) {
+      row.resize(nC);
     }
   }
 
   Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name("(" + m.name + ")_copy") {
     spdlog::warn("Matrix {}: copy constructor called", name.c_str());
-    // allocate heap for values variable
-    values = new float*[nR];
-    for (int i = 0; i < nR; ++i) {
-      values[i] = new float[nC];
+    values.resize(nR);
+    for (auto& row: values) {
+      row.resize(nC);
     }
     // deep copy the values variable
     for (int i = 0; i < nR; ++i) {
@@ -42,10 +42,6 @@ public:
 
   ~Matrix() {
     spdlog::info("Matrix {}: destructor called", name.c_str());
-    for (int i = 0; i < nR; ++i) {
-      delete[] values[i];
-    }
-    delete[] values;
   }
 
   Matrix* setZeros() {

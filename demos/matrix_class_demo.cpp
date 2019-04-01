@@ -51,6 +51,16 @@ int main() {
     Matrix output = input * weights + bias;
     std::cout << output << std::endl;
 
+    Matrix F(2, 4, "F");
+    F.setIdentity();
+    std::cout << F << std::endl;
+
+    Matrix F_sigmoid = F.sigmoid();
+    std::cout << F_sigmoid << std::endl;
+
+    Matrix F_softmax = F.softmax();
+    std::cout << F_softmax << std::endl;
+
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

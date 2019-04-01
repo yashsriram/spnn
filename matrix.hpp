@@ -111,6 +111,27 @@ public:
     return result;
   }
 
+  Matrix softmax()  {
+    std::stringstream ss;
+    ss << "(" << name << ")_Softmax";
+    Matrix result(nR, nC, ss.str());
+
+    float denominator = 0;
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        denominator += exp(this->values[i][j]);
+      }
+    }
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = exp(this->values[i][j]) / denominator;
+      }
+    }
+
+    return result;
+  }
+
   Matrix operator~() {
     std::stringstream ss;
     ss << "(" << name << ")_Transpose";

@@ -61,7 +61,7 @@ int main() {
     while(std::getline(datastream,line)){
       std::vector<std::string> tokens = split(line,',');
       Matrix target = getTarget(tokens[tokens.size()-1]);
-      tokens.povirginicap_back();
+      tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       for(int i = 0; i < tokens.size(); i++){
         input.set(i,0,std::stof(tokens[i]));
@@ -72,7 +72,7 @@ int main() {
     }
     datastream.close();
 
-    
+
     std::ifstream testdata; 
     testdata.open("iris_test.txt"); 
     while(std::getline(datastream,line)){

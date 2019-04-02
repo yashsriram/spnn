@@ -71,6 +71,42 @@ class FullyConnectedNetwork {
     return result;
   }
 
+  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
+    vector<Matrix*> ins,outs;
+    Matrix* in = new Matrix(inputMatrix);
+    Matrix* temp = in; // TO BE DELETED
+    outs.push_back(in);
+    // FORWARD PASS
+    for(int i = 0; i < weights.size(); i++) {
+      Matrix* in = new Matrix(*in * weights[i] + biases[i]);
+      Matrix* out = new Matrix(in->sigmoid());
+      ins.push_back(in);
+      outs.push_back(out);
+      in = out;
+    }
+    // BACKPROP
+    int n = weights.size();
+    Matrix delta;
+    for(int i = n - 1 ; i >= 0; i--){
+      if(i == n - 1){
+          delta = (targetMatrix - *outs[i+1]) $ *ins[i];
+          change = (*outs[i]) * (~delta);
+          weights[i] = weights[i] + alpha * change;
+      }
+      else{
+        delta = (ins[i]->delsigmoid()) $ (weights[i+1] * delta);
+        change = (*outs[i]) * (~delta);
+        weights[i] = weights[i] + alpha * change;
+      }
+    }
+    for(auto it : ins){
+      delete it;
+    }
+    for(auto it : outs){
+      delete it;
+    }
+    delete temp;
+  }
 };
 
 #endif

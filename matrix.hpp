@@ -108,6 +108,18 @@ public:
       }
     }
 
+    Matrix delsigmoid()  {
+    std::stringstream ss;
+    ss << "(" << name << ")_SigmoidActivation";
+    Matrix result(nR, nC, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = 1 / (1 + exp(-this->values[i][j]));
+        result.values[i][j] = result.values[i][j] - (result.values[i][j]*result.values[i][j]);
+      }
+    }
+
     return result;
   }
 
@@ -192,6 +204,29 @@ public:
           elementSum += this->values[i][k] * m.values[k][j];
         }
         result.values[i][j] = elementSum;
+      }
+    }
+
+    return result;
+  }
+
+  Matrix operator$(Matrix const &m) {
+    if (nC != m.nC || nR != m.nR) {
+      std::stringstream ss;
+      ss <<  "Invalid dimensions for matrix element wise multiplication: Candidates are matrices "
+        << name << "(" << nR << "," << nC << ")"
+        << " and "
+        << m.name << "(" << m.nR << "," << m.nC << ")";
+      throw ss.str();
+    }
+
+    std::stringstream ss;
+    ss << name << " $ " << m.name;
+    Matrix result(nR, nC, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = this->values[i][j] * m.values[i][j];
       }
     }
 

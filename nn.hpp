@@ -74,7 +74,6 @@ class FullyConnectedNetwork {
   void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
     vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
-    Matrix* temp = in; // TO BE DELETED
     outs.push_back(in);
     // FORWARD PASS
     for(int i = 0; i < weights.size(); i++) {
@@ -105,7 +104,6 @@ class FullyConnectedNetwork {
     for(auto it : outs){
       delete it;
     }
-    delete temp;
   }
 };
 

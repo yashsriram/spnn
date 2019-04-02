@@ -125,7 +125,7 @@ public:
   void operator=(Matrix const &m) {
     /* = operator is completely disabled to ensure simplicity */
     if(m.nC == nC && m.nR == nR){
-      name = "(" m.name + ")_copy";
+      name = "(" + m.name + ")_copy";
       for (int i = 0; i < nR; ++i) {
         for (int j = 0; j < nC; ++j) {
           values[i][j] = m.values[i][j];

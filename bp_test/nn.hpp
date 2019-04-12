@@ -73,9 +73,11 @@ class FullyConnectedNetwork {
 
   void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
     std::vector<Matrix*> ins,outs;
+    std::cout<<"c\n";
     Matrix* in = new Matrix(inputMatrix);
     Matrix target = Matrix(targetMatrix);
     outs.push_back(in);
+    std::cout<<"d\n";
     // FORWARD PASS
     for(int i = 0; i < weights.size(); i++) {
       Matrix* in = new Matrix(*in * weights[i] + biases[i]);
@@ -89,7 +91,8 @@ class FullyConnectedNetwork {
     Matrix* delta;
     for(int i = n - 1 ; i >= 0; i--){
       if(i == n - 1){
-          delta = new Matrix((target - *outs[i+1]) % *ins[i]);
+          delta = new Matrix((target - outs[i+1]->compute_softmax()) % *ins[i]);
+          delta->setName("delta");
           Matrix change = (*outs[i]) * (~*delta);
           weights[i] = weights[i] + change * alpha;
       }

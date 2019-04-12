@@ -107,9 +107,9 @@ public:
 
     return result;
   }
-    Matrix delsigmoid()  {
+  Matrix delsigmoid()  {
     std::stringstream ss;
-    ss << "(" << name << ")_SigmoidActivation";
+    ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, ss.str());
 
     for (int i = 0; i < nR; ++i) {
@@ -119,6 +119,29 @@ public:
       }
     }
 
+    return result;
+  }
+
+  Matrix compute_softmax(){
+    std::stringstream ss;
+    ss << "(" << name << ")_SoftMax";
+    Matrix result(nR, nC, ss.str());
+    
+    if(nC == 1){
+      float sum = 0;
+      for (int i = 0; i < nR; ++i) {
+        sum += exp(this->values[i][0]);
+      }
+      for (int i = 0; i < nR; ++i) {
+        result.values[i][0] = exp(this->values[i][0])/sum;
+      }
+    }
+    else{
+      std::stringstream ss;
+      ss <<  "Invalid operation: Attempt to compute softmax of a 2D matrix";
+      throw ss.str();
+    }
+    
     return result;
   }
 

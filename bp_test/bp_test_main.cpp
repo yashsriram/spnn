@@ -63,6 +63,7 @@ int main() {
       Matrix target = getTarget(tokens[tokens.size()-1]);
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
+      input.setZeros();
       for(int i = 0; i < tokens.size(); i++){
         input.set(i,0,std::stof(tokens[i]));
       }
@@ -75,7 +76,7 @@ int main() {
 
     std::ifstream testdata; 
     testdata.open("iris_test.txt"); 
-    while(std::getline(datastream,line)){
+    while(std::getline(testdata,line)){
       std::vector<std::string> tokens = split(line,',');
       // Matrix target = getTarget(tokens[tokens.size()-1]);
       std::string actual = tokens[tokens.size()-1];

@@ -47,13 +47,13 @@ class FullyConnectedNetwork {
     for(int i = 0; i < weights.size(); i++) {
       std::stringstream name;
       name << "weight_" << i;
-      weights[i].setName(name.str());
+      weights[i].name = name.str();
     }
 
     for(int i = 0; i < biases.size(); i++) {
       std::stringstream name;
       name << "bias_" << i;
-      biases[i].setName(name.str());
+      biases[i].name = name.str();
     }
 
     isCompiled = true;
@@ -72,10 +72,12 @@ class FullyConnectedNetwork {
   }
 
   void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
-    vector<Matrix*> ins,outs;
+    std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
+    Matrix target = Matrix(targetMatrix);
     outs.push_back(in);
-    // FORWARD PASS
+
+    // forward pass
     for(int i = 0; i < weights.size(); i++) {
       Matrix* in = new Matrix(*in * weights[i] + biases[i]);
       Matrix* out = new Matrix(in->sigmoid());
@@ -83,19 +85,22 @@ class FullyConnectedNetwork {
       outs.push_back(out);
       in = out;
     }
-    // BACKPROP
+
+    // backprop
     int n = weights.size();
-    Matrix delta;
+    Matrix* delta;
     for(int i = n - 1 ; i >= 0; i--){
       if(i == n - 1){
-          delta = (targetMatrix - *outs[i+1]) $ *ins[i];
-          change = (*outs[i]) * (~delta);
-          weights[i] = weights[i] + alpha * change;
-      }
-      else{
-        delta = (ins[i]->delsigmoid()) $ (weights[i+1] * delta);
-        change = (*outs[i]) * (~delta);
-        weights[i] = weights[i] + alpha * change;
+        delta = new Matrix((target - outs[i+1]->softmax()) % *ins[i]);
+        delta->name = "delta";
+        Matrix change = (*outs[i]) * (~*delta);
+        weights[i] = weights[i] + change * alpha;
+      } else {
+        Matrix* delta2 = new Matrix( (ins[i]->sigmoidDerivative()) % (weights[i+1] * *delta) );
+        delete delta;
+        delta = delta2;
+        Matrix change = (*outs[i]) * (~*delta);
+        weights[i] = weights[i] + change * alpha;
       }
     }
     for(auto it : ins){
@@ -105,6 +110,19 @@ class FullyConnectedNetwork {
       delete it;
     }
   }
+
+  int predict(const Matrix& inputMatrix){
+    Matrix res = forwardPass(inputMatrix);
+    int maxr = -1;
+    float maxval = -1000;
+    for(int i = 0; i < res.nR; i++){
+      if(res.at(i,0) > maxval){
+        maxr = i,maxval = res.at(i,0);
+      }
+    }
+    return maxr;
+  }
+
 };
 
 #endif

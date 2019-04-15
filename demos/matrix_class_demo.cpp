@@ -31,7 +31,11 @@ int main() {
     Matrix E(2, 3, "E");
     E.setOnes();
     Matrix MUL = A * E;
+    Matrix MUL_CONST = A * 6;
+    Matrix MUL_ELEMENTWISE = MUL_CONST % B;
     std::cout << MUL << std::endl;
+    std::cout << MUL_CONST << std::endl;
+    std::cout << MUL_ELEMENTWISE << std::endl;
 
     Matrix TRANSPOSE = ~B;
     std::cout << TRANSPOSE << std::endl;

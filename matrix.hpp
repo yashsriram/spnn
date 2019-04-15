@@ -8,18 +8,11 @@
 #include <vector>
 
 class Matrix {
-  std::string name;
   std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
-  void operator=(Matrix const &m) {
-    /* = operator is completely disabled to ensure simplicity */
-    std::stringstream ss;
-    ss <<  "Invalid operation: Attempt to assign a matrix " << m.name.c_str() << " to another matrix";
-    throw ss.str();
-  }
-
 public:
+  std::string name;
   const int nR, nC;
 
   Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
@@ -44,6 +37,26 @@ public:
     }
   }
 
+  void operator=(Matrix const &m) {
+    if (m.nC != nC || m.nR != nR) {
+      std::stringstream ss;
+      ss <<  "Invalid operation: Attempt to assign a matrix with different dimensions: Trying to assign "
+         << m.name
+         << "(" << m.nR << ", " << m.nC << ")"
+         "to matrix"
+         << name
+         << "(" << nR << ", " << nC << ")";
+      throw ss.str();
+    }
+
+    name = "(" + m.name + ")_copy";
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        values[i][j] = m.values[i][j];
+      }
+    }
+  }
+
   ~Matrix() {
     spdlog::debug("Matrix {}: destructor called", name.c_str());
   }
@@ -52,11 +65,6 @@ public:
 
   float& at(const int& i, const int& j) {
     return values[i][j];
-  }
-
-  Matrix* setName(const std::string& name) {
-    this->name = name;
-    return this;
   }
 
   Matrix* setZeros() {
@@ -108,9 +116,12 @@ public:
       }
     }
 
-    Matrix delsigmoid()  {
+    return result;
+  }
+
+  Matrix sigmoidDerivative()  {
     std::stringstream ss;
-    ss << "(" << name << ")_SigmoidActivation";
+    ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, ss.str());
 
     for (int i = 0; i < nR; ++i) {
@@ -118,6 +129,28 @@ public:
         result.values[i][j] = 1 / (1 + exp(-this->values[i][j]));
         result.values[i][j] = result.values[i][j] - (result.values[i][j]*result.values[i][j]);
       }
+    }
+
+    return result;
+  }
+
+  Matrix softmax(){
+    std::stringstream ss;
+    ss << "(" << name << ")_SoftMax";
+    Matrix result(nR, nC, ss.str());
+
+    if(nC == 1){
+      float sum = 0;
+      for (int i = 0; i < nR; ++i) {
+        sum += exp(this->values[i][0]);
+      }
+      for (int i = 0; i < nR; ++i) {
+        result.values[i][0] = exp(this->values[i][0])/sum;
+      }
+    } else {
+      std::stringstream ss;
+      ss <<  "Invalid operation: Attempt to compute softmax of a 2D matrix";
+      throw ss.str();
     }
 
     return result;
@@ -210,7 +243,22 @@ public:
     return result;
   }
 
-  Matrix operator$(Matrix const &m) {
+  Matrix operator*(float const &value) {
+    std::stringstream ss;
+    ss << name << " * " << "const(" << value << ")";
+    Matrix result(nR, nC, ss.str());
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = this->values[i][j] * value;
+      }
+    }
+
+    return result;
+  }
+
+
+  Matrix operator%(Matrix const &m) {
     if (nC != m.nC || nR != m.nR) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix element wise multiplication: Candidates are matrices "
@@ -221,7 +269,7 @@ public:
     }
 
     std::stringstream ss;
-    ss << name << " $ " << m.name;
+    ss << name << " % " << m.name;
     Matrix result(nR, nC, ss.str());
 
     for (int i = 0; i < nR; ++i) {

@@ -3,19 +3,19 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "matrix.hpp"
-#include "nn.hpp"
+#include "../matrix.hpp"
+#include "../nn.hpp"
 
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
-   std::vector<std::string> tokens;
-   std::string token;
-   std::istringstream tokenStream(s);
-   while (std::getline(tokenStream, token, delimiter))
-   {
-      tokens.push_back(token);
-   }
-   return tokens;
+  std::vector<std::string> tokens;
+  std::string token;
+  std::istringstream tokenStream(s);
+  while (std::getline(tokenStream, token, delimiter))
+  {
+    tokens.push_back(token);
+  }
+  return tokens;
 }
 // https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/
 
@@ -36,7 +36,7 @@ Matrix getTarget(const std::string& s){
   }
   Matrix result = Matrix(3,1,"target");
   result.setZeros();
-  result.set(out_class,0,1);
+  result.at(out_class, 0) = 1;
   return result;
 }
 std::vector<std::string> outputs = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
@@ -54,9 +54,9 @@ int main() {
     fnn.addLayer(3);
     fnn.compile();
     float lr = 0.001;
-    
-    std::ifstream datastream; 
-    datastream.open("iris_data.txt"); 
+
+    std::ifstream datastream;
+    datastream.open("../data/iris_train.txt");
     std::string line;
     while(std::getline(datastream,line)){
       std::vector<std::string> tokens = split(line,',');
@@ -65,7 +65,7 @@ int main() {
       Matrix input(tokens.size(),1,"input");
       input.setZeros();
       for(int i = 0; i < tokens.size(); i++){
-        input.set(i,0,std::stof(tokens[i]));
+        input.at(i, 0) = std::stof(tokens[i]);
       }
       std::cout<<"a\n";
       fnn.step_train(input,target,lr);
@@ -74,8 +74,8 @@ int main() {
     datastream.close();
 
 
-    std::ifstream testdata; 
-    testdata.open("iris_test.txt"); 
+    std::ifstream testdata;
+    testdata.open("../data/iris_test.txt");
     while(std::getline(testdata,line)){
       std::vector<std::string> tokens = split(line,',');
       // Matrix target = getTarget(tokens[tokens.size()-1]);
@@ -83,12 +83,12 @@ int main() {
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       for(int i = 0; i < tokens.size(); i++){
-        input.set(i,0,std::stof(tokens[i]));
+        input.at(i, 0) = std::stof(tokens[i]);
       }
       std::cout<<"Prediction : "<<outputs[fnn.predict(input)]<<" Actual : "<<actual<<std::endl;
     }
-    
-    
+
+
   } catch (std::string e) {
     spdlog::error(e);
   }

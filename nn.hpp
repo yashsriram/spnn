@@ -59,33 +59,27 @@ class FullyConnectedNetwork {
     isCompiled = true;
   }
 
-  Matrix forwardPass(const Matrix& inputMatrix) {
-    Matrix* in = new Matrix(inputMatrix);
-    for(int i = 0; i < weights.size(); i++) {
-      Matrix out = (*in * weights[i] + biases[i]).sigmoid();
-      delete in;
-      in = new Matrix(out);
-    }
-    Matrix result = *in;
-    delete in;
-    return result;
-  }
 
   void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
     std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
+    in->name = "Input Matrix";
     Matrix target = Matrix(targetMatrix);
     outs.push_back(in);
-
+    Matrix* out;
     // forward pass
     for(int i = 0; i < weights.size(); i++) {
-      Matrix* in = new Matrix(*in * weights[i] + biases[i]);
-      Matrix* out = new Matrix(in->sigmoid());
+      in->printDims();
+      weights[i].printDims();
+      in = new Matrix(~(~(*in) * weights[i] + biases[i]));
+      out = new Matrix(in->sigmoid());
+      in->name =  "Input to layer " + std::to_string(i+1);
+      out->name =  "Output of layer " + std::to_string(i+1);
       ins.push_back(in);
       outs.push_back(out);
       in = out;
     }
-
+    spdlog::info("FP Done");
     // backprop
     int n = weights.size();
     Matrix* delta;
@@ -109,6 +103,19 @@ class FullyConnectedNetwork {
     for(auto it : outs){
       delete it;
     }
+  }
+
+
+  Matrix forwardPass(const Matrix& inputMatrix) {
+    Matrix* in = new Matrix(inputMatrix);
+    for(int i = 0; i < weights.size(); i++) {
+      Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid());
+      delete in;
+      in = new Matrix(out);
+    }
+    Matrix result = *in;
+    delete in;
+    return result;
   }
 
   int predict(const Matrix& inputMatrix){

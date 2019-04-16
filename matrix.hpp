@@ -63,6 +63,11 @@ public:
 
   int getNumElements() { return nR * nC; }
 
+  void printDims(){
+    spdlog::info("nR = {}, nC = {}",nR,nC);
+    return;
+  }
+
   float& at(const int& i, const int& j) {
     return values[i][j];
   }
@@ -218,12 +223,14 @@ public:
 
   Matrix operator*(Matrix const &m) {
     if (nC != m.nR) {
-      std::stringstream ss;
-      ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
-        << name << "(" << nR << "," << nC << ")"
-        << " and "
-        << m.name << "(" << m.nR << "," << m.nC << ")";
-      throw ss.str();
+      // std::stringstream ss;
+      // ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
+      //   << name << "(" << nR << "," << nC << ")"
+      //   << " and "
+      //   << m.name << "(" << m.nR << "," << m.nC << ")";
+      // throw ss.str();
+      spdlog::error("{}, {}, {}, {}",nR, nC, m.nR, m.nC);
+      exit(-1);
     }
 
     std::stringstream ss;

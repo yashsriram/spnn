@@ -43,7 +43,7 @@ std::vector<std::string> outputs = {"Iris-setosa","Iris-versicolor","Iris-virgin
 
 int main() {
   srand(42);
-  spdlog::set_level(spdlog::level::debug);
+  spdlog::set_level(spdlog::level::warn);
   spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
 
   try {
@@ -58,6 +58,7 @@ int main() {
     std::ifstream datastream;
     datastream.open("../data/iris_train.txt");
     std::string line;
+    int cnt = 100, cur = 0;
     while(std::getline(datastream,line)){
       std::vector<std::string> tokens = split(line,',');
       Matrix target = getTarget(tokens[tokens.size()-1]);
@@ -70,6 +71,8 @@ int main() {
       std::cout<<"a\n";
       fnn.step_train(input,target,lr);
       std::cout<<"B\n";
+      // cur++;
+      // if(cur > cnt)break;
     }
     datastream.close();
 

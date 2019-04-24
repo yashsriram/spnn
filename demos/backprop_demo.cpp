@@ -50,25 +50,27 @@ int main() {
     fnn.compile();
     float lr = 0.001;
 
-    ifstream trainData;
-    trainData.open("../data/iris_train.txt");
     string line;
-    int trainingStepCounter = 0;
-    spdlog::info("Training start");
-    while(getline(trainData, line)){
-      vector<string> tokens = split(line, ',');
-      Matrix target = getTarget(tokens[tokens.size() - 1]);
-      tokens.pop_back();
-      Matrix input(tokens.size(),1,"input");
-      input.setZeros();
-      for(int i = 0; i < tokens.size(); i++) {
-        input.at(i, 0) = stof(tokens[i]);
+    for (int e = 0; e < 1; ++e) {
+      ifstream trainData;
+      trainData.open("../data/iris_train.txt");
+      int trainingStepCounter = 0;
+      spdlog::info("Training start");
+      while(getline(trainData, line)){
+        vector<string> tokens = split(line, ',');
+        Matrix target = getTarget(tokens[tokens.size() - 1]);
+        tokens.pop_back();
+        Matrix input(tokens.size(),1,"input");
+        input.setZeros();
+        for(int i = 0; i < tokens.size(); i++) {
+          input.at(i, 0) = stof(tokens[i]);
+        }
+        fnn.step_train(input,target,lr);
+        spdlog::info("Training step {} complete", trainingStepCounter);
+        trainingStepCounter++;
       }
-      fnn.step_train(input,target,lr);
-      spdlog::info("Training step {} complete", trainingStepCounter);
-      trainingStepCounter++;
+      trainData.close();
     }
-    trainData.close();
 
     ifstream testData;
     testData.open("../data/iris_test.txt");

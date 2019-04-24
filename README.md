@@ -4,6 +4,7 @@
 
 # Todo
 - [ ] Remove double transpose
+- [ ] Control size of name field
 - [ ] Get MNIST data
 - [ ] Normalize
 - [ ] Init weights and biases

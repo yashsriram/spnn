@@ -138,21 +138,20 @@ public:
 
   Matrix softmax(){
     std::stringstream ss;
-    ss << "(" << name << ")_SoftMax";
+    ss << "(" << name << ")_Softmax";
     Matrix result(nR, nC, ss.str());
 
-    if(nC == 1){
-      float sum = 0;
-      for (int i = 0; i < nR; ++i) {
-        sum += exp(this->values[i][0]);
+    float sum = 0;
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        sum += exp(this->values[i][j]);
       }
-      for (int i = 0; i < nR; ++i) {
-        result.values[i][0] = exp(this->values[i][0])/sum;
+    }
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = exp(this->values[i][j]) / sum;
       }
-    } else {
-      std::stringstream ss;
-      ss <<  "Invalid operation: Attempt to compute softmax of a 2D matrix";
-      throw ss.str();
     }
 
     return result;

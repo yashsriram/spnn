@@ -16,9 +16,9 @@ int main() {
     fnn.addLayer(10);
     fnn.compile();
 
-    Matrix in(1, 728, "input");
+    Matrix in(728, 1, "input");
     in.setOnes();
-    std::cout << in << std::endl;
+    /* std::cout << in << std::endl; */
     Matrix out = fnn.forwardPass(in);
     std::cout << out << std::endl;
 

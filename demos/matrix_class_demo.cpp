@@ -52,6 +52,9 @@ int main() {
     bias.setIdentity();
     std::cout << bias << std::endl;
 
+    Matrix biasSoftmax = bias.softmax();
+    std::cout << biasSoftmax << std::endl;
+
     Matrix output = input * weights + bias;
     std::cout << output << std::endl;
 

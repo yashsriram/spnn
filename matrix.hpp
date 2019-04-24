@@ -7,6 +7,8 @@
 #include <sstream>
 #include <vector>
 
+bool USE_MATRIX_NAMES = true;
+
 class Matrix {
   std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
@@ -15,7 +17,7 @@ public:
   std::string name;
   const int nR, nC;
 
-  Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
+  Matrix(int r, int c, std::string name = USE_MATRIX_NAMES ? "<unnamed-matrix>" : ""): nR(r), nC(c), name(name) {
     spdlog::debug("Matrix {}: constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
@@ -23,7 +25,7 @@ public:
     }
   }
 
-  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name("(" + m.name + ")_copy") {
+  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "") {
     spdlog::debug("Matrix {}: copy constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
@@ -49,7 +51,7 @@ public:
       throw ss.str();
     }
 
-    name = "(" + m.name + ")_copy";
+    name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
         values[i][j] = m.values[i][j];
@@ -124,7 +126,7 @@ public:
   Matrix sigmoidDerivative()  {
     std::stringstream ss;
     ss << "(" << name << ")_SigmoidDerivative";
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -139,7 +141,7 @@ public:
   Matrix softmax(){
     std::stringstream ss;
     ss << "(" << name << ")_Softmax";
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     float sum = 0;
     for (int i = 0; i < nR; ++i) {
@@ -160,7 +162,7 @@ public:
   Matrix operator~() {
     std::stringstream ss;
     ss << "(" << name << ")_Transpose";
-    Matrix result(nC, nR, ss.str());
+    Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -183,7 +185,7 @@ public:
 
     std::stringstream ss;
     ss << name << " + " << m.name;
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -206,7 +208,7 @@ public:
 
     std::stringstream ss;
     ss << name << " - " << m.name;
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -229,7 +231,7 @@ public:
 
     std::stringstream ss;
     ss << name << " * " << m.name;
-    Matrix result(nR, m.nC, ss.str());
+    Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < m.nC; ++j) {
@@ -247,7 +249,7 @@ public:
   Matrix operator*(float const &value) {
     std::stringstream ss;
     ss << name << " * " << "const(" << value << ")";
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -271,7 +273,7 @@ public:
 
     std::stringstream ss;
     ss << name << " % " << m.name;
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {

@@ -40,6 +40,7 @@ int main() {
   srand(42);
   spdlog::set_level(spdlog::level::info);
   spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
+  USE_MATRIX_NAMES = false;
 
   try {
     auto fnn = FullyConnectedNetwork();
@@ -51,11 +52,12 @@ int main() {
     float lr = 0.001;
 
     string line;
-    for (int e = 0; e < 1; ++e) {
+    spdlog::info("Training start");
+    for (int e = 0; e < 10; ++e) {
+      spdlog::info("Epoch {}", e);
       ifstream trainData;
       trainData.open("../data/iris_train.txt");
       int trainingStepCounter = 0;
-      spdlog::info("Training start");
       while(getline(trainData, line)){
         vector<string> tokens = split(line, ',');
         Matrix target = getTarget(tokens[tokens.size() - 1]);
@@ -66,7 +68,7 @@ int main() {
           input.at(i, 0) = stof(tokens[i]);
         }
         fnn.step_train(input,target,lr);
-        spdlog::info("Training step {} complete", trainingStepCounter);
+        /* spdlog::info("Training step {} complete", trainingStepCounter); */
         trainingStepCounter++;
       }
       trainData.close();
@@ -84,8 +86,8 @@ int main() {
       for(int i = 0; i < tokens.size(); i++){
         input.at(i, 0) = stof(tokens[i]);
       }
-      spdlog::info("Prediction {}, actual: {}, predicted: {}",
-          actual == outputs[fnn.predict(input)] ? "Correct" : "Incorrect", actual, outputs[fnn.predict(input)]);
+      spdlog::info("Prediction {}\tactual: {}\tpredicted: {}",
+          actual == outputs[fnn.predict(input)] ? "Correct" : "Wrong", actual, outputs[fnn.predict(input)]);
     }
 
   } catch (string e) {

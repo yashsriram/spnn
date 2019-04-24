@@ -59,8 +59,19 @@ class FullyConnectedNetwork {
     isCompiled = true;
   }
 
+  float crossEntropyLoss(const Matrix& probabilities, const Matrix& target) {
+    std::pair<int, int> trueClassIndex = target.argmax();
+    if (target.get(trueClassIndex) != 1) {
+      std::stringstream ss;
+      ss << "Cross Entropy Loss: Prob of true class in target is not 1.\n"
+         << "Target is " << target << "\n"
+         << "Probabilities is " << probabilities << "\n";
+      throw ss.str();
+    }
+    return -log(probabilities.get(trueClassIndex));
+  }
 
-  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float learningRate){
+  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
     std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
     in->name = "Input Matrix";
@@ -103,7 +114,7 @@ class FullyConnectedNetwork {
     }
   }
 
-  Matrix predict(const Matrix& inputMatrix) {
+  Matrix predict(const Matrix& inputMatrix) const {
     Matrix* in = new Matrix(inputMatrix);
     for(int i = 0; i < weights.size(); i++) {
       Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid());
@@ -115,7 +126,7 @@ class FullyConnectedNetwork {
     return result;
   }
 
-  int predictClass(const Matrix& inputMatrix){
+  int predictClass(const Matrix& inputMatrix) const {
     Matrix res = predict(inputMatrix);
     std::pair<int, int> resArgmax = res.argmax();
     return resArgmax.first;

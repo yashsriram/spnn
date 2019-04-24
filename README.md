@@ -9,7 +9,7 @@
 - [ ] Get MNIST data
 - [ ] Forwadpass and backprop with per epoch calculation of loss and accuracy
 - [ ] Full batch gradient descent?
+- [ ] evaluate on test set
 - [ ] Remove double transpose
 - [ ] Normalize
 - [ ] Init weights and biases better
-- [ ] evaluate on test set

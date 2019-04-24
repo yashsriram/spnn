@@ -65,15 +65,23 @@ public:
     spdlog::debug("Matrix {}: destructor called", name.c_str());
   }
 
-  int getNumElements() { return nR * nC; }
+  int getNumElements() const { return nR * nC; }
 
-  void printDims(){ spdlog::info("nR = {}, nC = {}",nR,nC); }
+  void printDims() const { spdlog::info("nR = {}, nC = {}",nR,nC); }
+
+  float get(const int& i, const int& j) const {
+    return values[i][j];
+  }
+
+  float get(const std::pair<int, int>& index) const {
+    return this->get(index.first, index.second);
+  }
 
   float& at(const int& i, const int& j) {
     return values[i][j];
   }
 
-  std::pair<int, int> argmax() {
+  std::pair<int, int> argmax() const {
     std::vector<int> argmaxCols;
     std::vector<float> rowwiseMaxs;
     for (int i = 0; i < nR; ++i) {
@@ -127,7 +135,7 @@ public:
     return this;
   }
 
-  Matrix sigmoid()  {
+  Matrix sigmoid() const {
     std::stringstream ss;
     ss << "(" << name << ")_SigmoidActivation";
     Matrix result(nR, nC, ss.str());
@@ -141,7 +149,7 @@ public:
     return result;
   }
 
-  Matrix sigmoidDerivative()  {
+  Matrix sigmoidDerivative() const {
     std::stringstream ss;
     ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
@@ -156,7 +164,7 @@ public:
     return result;
   }
 
-  Matrix softmax(){
+  Matrix softmax() const {
     std::stringstream ss;
     ss << "(" << name << ")_Softmax";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
@@ -177,7 +185,7 @@ public:
     return result;
   }
 
-  Matrix operator~() {
+  Matrix operator~() const {
     std::stringstream ss;
     ss << "(" << name << ")_Transpose";
     Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
@@ -191,7 +199,7 @@ public:
     return result;
   }
 
-  Matrix operator+(Matrix const &m) {
+  Matrix operator+(Matrix const &m) const {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix addition: Candidates are matrices "
@@ -214,7 +222,7 @@ public:
     return result;
   }
 
-  Matrix operator-(Matrix const &m) {
+  Matrix operator-(Matrix const &m) const {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix subtraction: Candidates are matrices "
@@ -237,7 +245,7 @@ public:
     return result;
   }
 
-  Matrix operator*(Matrix const &m) {
+  Matrix operator*(Matrix const &m) const {
     if (nC != m.nR) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
@@ -264,7 +272,7 @@ public:
     return result;
   }
 
-  Matrix operator*(float const &value) {
+  Matrix operator*(float const &value) const {
     std::stringstream ss;
     ss << name << " * " << "const(" << value << ")";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
@@ -279,7 +287,7 @@ public:
   }
 
 
-  Matrix operator%(Matrix const &m) {
+  Matrix operator%(Matrix const &m) const {
     if (nC != m.nC || nR != m.nR) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix element wise multiplication: Candidates are matrices "

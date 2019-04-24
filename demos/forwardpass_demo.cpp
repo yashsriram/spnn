@@ -20,7 +20,17 @@ int main() {
     in.setOnes();
     /* std::cout << in << std::endl; */
     Matrix out = fnn.predict(in);
+    out.name = "unnormalized log probabilities";
     std::cout << out << std::endl;
+
+    Matrix target(10, 1, "target");
+    target.setZeros();
+    target.at(4, 0) = 1;
+
+    Matrix probabilities = out.softmax();
+    std::cout << probabilities << std::endl;
+    float loss = fnn.crossEntropyLoss(probabilities, target);
+    spdlog::info("Cross entropy loss: {}", loss);
 
   } catch (std::string e) {
     spdlog::error(e);

@@ -67,7 +67,7 @@ int main() {
         for(int i = 0; i < tokens.size(); i++) {
           input.at(i, 0) = stof(tokens[i]);
         }
-        fnn.step_train(input,target,lr);
+        fnn.stepTrain(input,target,lr);
         /* spdlog::info("Training step {} complete", trainingStepCounter); */
         trainingStepCounter++;
       }

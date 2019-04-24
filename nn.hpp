@@ -71,7 +71,7 @@ class FullyConnectedNetwork {
     return -log(probabilities.get(trueClassIndex));
   }
 
-  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
+  void stepTrain(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
     std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
     in->name = "Input Matrix";
@@ -89,10 +89,14 @@ class FullyConnectedNetwork {
       in = out;
     }
 
-    // backprop
     int i = weights.size() - 1;
+
+    // loss
+    spdlog::info("loss: {}", this->crossEntropyLoss(outs[i + 1]->softmax(), target));
+
+    // backprop
     Matrix* delta;
-    delta = new Matrix((target - outs[i+1]->softmax()) % *ins[i]);
+    delta = new Matrix((target - outs[i + 1]->softmax()) % *ins[i]);
     delta->name = "delta";
     Matrix change = (*outs[i]) * (~*delta);
     weights[i] = weights[i] + change * learningRate;

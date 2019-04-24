@@ -4,11 +4,11 @@
 
 # Todo
 - [x] Control size of name field
+- [x] Impl loss function
 - [ ] Remove memleaks from step_train
-- [ ] Impl loss function
 - [ ] Get MNIST data
-- [ ] Forwadpass and backprop with per epoch calculation of loss and accuracy
 - [ ] Full batch gradient descent?
+- [ ] Forwadpass and backprop with per epoch calculation of loss and accuracy
 - [ ] evaluate on test set
 - [ ] Remove double transpose
 - [ ] Normalize

@@ -58,7 +58,7 @@ int main() {
     std::ifstream datastream;
     datastream.open("../data/iris_train.txt");
     std::string line;
-    int cnt = 100, cur = 0;
+    int trainingStepCounter = 0;
     while(std::getline(datastream,line)){
       std::vector<std::string> tokens = split(line,',');
       Matrix target = getTarget(tokens[tokens.size()-1]);
@@ -68,11 +68,9 @@ int main() {
       for(int i = 0; i < tokens.size(); i++){
         input.at(i, 0) = std::stof(tokens[i]);
       }
-      std::cout<<"a\n";
       fnn.step_train(input,target,lr);
-      std::cout<<"B\n";
-      // cur++;
-      // if(cur > cnt)break;
+      spdlog::critical("Training step {} complete", trainingStepCounter);
+      trainingStepCounter++;
     }
     datastream.close();
 
@@ -88,7 +86,7 @@ int main() {
       for(int i = 0; i < tokens.size(); i++){
         input.at(i, 0) = std::stof(tokens[i]);
       }
-      std::cout<<"Prediction : "<<outputs[fnn.predict(input)]<<" Actual : "<<actual<<std::endl;
+      spdlog::critical("Prediction OK: {}, actual: {}, predicted: {}", actual == outputs[fnn.predict(input)], actual, outputs[fnn.predict(input)]);
     }
 
 

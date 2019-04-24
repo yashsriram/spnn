@@ -24,7 +24,7 @@ public:
   }
 
   Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name("(" + m.name + ")_copy") {
-    spdlog::warn("Matrix {}: copy constructor called", name.c_str());
+    spdlog::debug("Matrix {}: copy constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
       row.resize(nC);
@@ -223,14 +223,12 @@ public:
 
   Matrix operator*(Matrix const &m) {
     if (nC != m.nR) {
-      // std::stringstream ss;
-      // ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
-      //   << name << "(" << nR << "," << nC << ")"
-      //   << " and "
-      //   << m.name << "(" << m.nR << "," << m.nC << ")";
-      // throw ss.str();
-      spdlog::error("{}, {}, {}, {}",nR, nC, m.nR, m.nC);
-      exit(-1);
+      std::stringstream ss;
+      ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
+        << name << "(" << nR << "," << nC << ")"
+        << " and "
+        << m.name << "(" << m.nR << "," << m.nC << ")";
+      throw ss.str();
     }
 
     std::stringstream ss;

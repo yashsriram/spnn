@@ -60,7 +60,7 @@ class FullyConnectedNetwork {
   }
 
 
-  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float alpha){
+  void step_train(const Matrix& inputMatrix, const Matrix& targetMatrix,float learningRate){
     std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
     in->name = "Input Matrix";
@@ -69,8 +69,6 @@ class FullyConnectedNetwork {
     Matrix* out;
     // forward pass
     for(int i = 0; i < weights.size(); i++) {
-      in->printDims();
-      weights[i].printDims();
       in = new Matrix(~(~(*in) * weights[i] + biases[i]));
       out = new Matrix(in->sigmoid());
       in->name =  "Input to layer " + std::to_string(i+1);
@@ -79,24 +77,24 @@ class FullyConnectedNetwork {
       outs.push_back(out);
       in = out;
     }
-    spdlog::info("FP Done");
+
     // backprop
-    int n = weights.size();
+    int i = weights.size() - 1;
     Matrix* delta;
-    for(int i = n - 1 ; i >= 0; i--){
-      if(i == n - 1){
-        delta = new Matrix((target - outs[i+1]->softmax()) % *ins[i]);
-        delta->name = "delta";
-        Matrix change = (*outs[i]) * (~*delta);
-        weights[i] = weights[i] + change * alpha;
-      } else {
-        Matrix* delta2 = new Matrix( (ins[i]->sigmoidDerivative()) % (weights[i+1] * *delta) );
-        delete delta;
-        delta = delta2;
-        Matrix change = (*outs[i]) * (~*delta);
-        weights[i] = weights[i] + change * alpha;
-      }
+    delta = new Matrix((target - outs[i+1]->softmax()) % *ins[i]);
+    delta->name = "delta";
+    Matrix change = (*outs[i]) * (~*delta);
+    weights[i] = weights[i] + change * learningRate;
+
+    for(int i = weights.size() - 2 ; i >= 0; i--){
+      Matrix* delta2 = new Matrix( (ins[i]->sigmoidDerivative()) % (weights[i+1] * *delta) );
+      delta->name = "delta2";
+      delete delta;
+      delta = delta2;
+      Matrix change = (*outs[i]) * (~*delta);
+      weights[i] = weights[i] + change * learningRate;
     }
+
     for(auto it : ins){
       delete it;
     }
@@ -104,7 +102,6 @@ class FullyConnectedNetwork {
       delete it;
     }
   }
-
 
   Matrix forwardPass(const Matrix& inputMatrix) {
     Matrix* in = new Matrix(inputMatrix);

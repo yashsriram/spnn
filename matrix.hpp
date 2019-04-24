@@ -63,10 +63,7 @@ public:
 
   int getNumElements() { return nR * nC; }
 
-  void printDims(){
-    spdlog::info("nR = {}, nC = {}",nR,nC);
-    return;
-  }
+  void printDims(){ spdlog::info("nR = {}, nC = {}",nR,nC); }
 
   float& at(const int& i, const int& j) {
     return values[i][j];

@@ -6,44 +6,39 @@
 #include "../matrix.hpp"
 #include "../nn.hpp"
 
-std::vector<std::string> split(const std::string& s, char delimiter)
-{
-  std::vector<std::string> tokens;
-  std::string token;
-  std::istringstream tokenStream(s);
-  while (std::getline(tokenStream, token, delimiter))
-  {
+using namespace std;
+
+vector<string> split(const string& s, char delimiter) {
+  vector<string> tokens;
+  string token;
+  istringstream tokenStream(s);
+  while (getline(tokenStream, token, delimiter)) {
     tokens.push_back(token);
   }
   return tokens;
 }
-// https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/
 
 Matrix getTarget(const std::string& s){
-  int out_class = -1;
+  int _class;
 
   if(s == "Iris-setosa"){
-    out_class = 0;
-  }
-  else if(s == "Iris-versicolor"){
-    out_class = 1;
-  }
-  else if(s == "Iris-virginica"){
-    out_class = 2;
-  }
-  else{
+    _class = 0;
+  } else if(s == "Iris-versicolor") {
+    _class = 1;
+  } else if(s == "Iris-virginica") {
+    _class = 2;
+  } else {
     throw "unidentified class";
   }
   Matrix result = Matrix(3,1,"target");
   result.setZeros();
-  result.at(out_class, 0) = 1;
+  result.at(_class, 0) = 1;
   return result;
 }
-std::vector<std::string> outputs = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
 
 int main() {
   srand(42);
-  spdlog::set_level(spdlog::level::warn);
+  spdlog::set_level(spdlog::level::info);
   spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
 
   try {
@@ -55,42 +50,43 @@ int main() {
     fnn.compile();
     float lr = 0.001;
 
-    std::ifstream datastream;
-    datastream.open("../data/iris_train.txt");
-    std::string line;
+    ifstream trainData;
+    trainData.open("../data/iris_train.txt");
+    string line;
     int trainingStepCounter = 0;
-    while(std::getline(datastream,line)){
-      std::vector<std::string> tokens = split(line,',');
-      Matrix target = getTarget(tokens[tokens.size()-1]);
+    spdlog::info("Training start");
+    while(getline(trainData, line)){
+      vector<string> tokens = split(line, ',');
+      Matrix target = getTarget(tokens[tokens.size() - 1]);
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       input.setZeros();
-      for(int i = 0; i < tokens.size(); i++){
-        input.at(i, 0) = std::stof(tokens[i]);
+      for(int i = 0; i < tokens.size(); i++) {
+        input.at(i, 0) = stof(tokens[i]);
       }
       fnn.step_train(input,target,lr);
-      spdlog::critical("Training step {} complete", trainingStepCounter);
+      spdlog::info("Training step {} complete", trainingStepCounter);
       trainingStepCounter++;
     }
-    datastream.close();
+    trainData.close();
 
-
-    std::ifstream testdata;
-    testdata.open("../data/iris_test.txt");
-    while(std::getline(testdata,line)){
-      std::vector<std::string> tokens = split(line,',');
-      // Matrix target = getTarget(tokens[tokens.size()-1]);
-      std::string actual = tokens[tokens.size()-1];
+    ifstream testData;
+    testData.open("../data/iris_test.txt");
+    vector<string> outputs = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
+    spdlog::info("Testing start");
+    while(getline(testData, line)){
+      vector<string> tokens = split(line, ',');
+      string actual = tokens[tokens.size() - 1];
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       for(int i = 0; i < tokens.size(); i++){
-        input.at(i, 0) = std::stof(tokens[i]);
+        input.at(i, 0) = stof(tokens[i]);
       }
-      spdlog::critical("Prediction OK: {}, actual: {}, predicted: {}", actual == outputs[fnn.predict(input)], actual, outputs[fnn.predict(input)]);
+      spdlog::info("Prediction {}, actual: {}, predicted: {}",
+          actual == outputs[fnn.predict(input)] ? "Correct" : "Incorrect", actual, outputs[fnn.predict(input)]);
     }
 
-
-  } catch (std::string e) {
+  } catch (string e) {
     spdlog::error(e);
   }
 

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
 bool USE_MATRIX_NAMES = true;
 
@@ -69,6 +71,22 @@ public:
 
   float& at(const int& i, const int& j) {
     return values[i][j];
+  }
+
+  std::pair<int, int> argmax() {
+    std::vector<int> argmaxCols;
+    std::vector<float> rowwiseMaxs;
+    for (int i = 0; i < nR; ++i) {
+      auto row = values[i];
+      int argmaxCol = std::max_element(row.begin(), row.end()) - row.begin();
+      float maxInRow = *std::max_element(row.begin(), row.end());
+      argmaxCols.push_back(argmaxCol);
+      rowwiseMaxs.push_back(maxInRow);
+    }
+    int argmaxRow = std::max_element(rowwiseMaxs.begin(), rowwiseMaxs.end()) - rowwiseMaxs.begin();
+    int argmaxCol = argmaxCols[argmaxRow];
+
+    return std::pair<int, int>(argmaxRow, argmaxCol);
   }
 
   Matrix* setZeros() {

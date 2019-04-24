@@ -70,10 +70,10 @@ class FullyConnectedNetwork {
     // forward pass
     for(int i = 0; i < weights.size(); i++) {
       in = new Matrix(~(~(*in) * weights[i] + biases[i]));
-      out = new Matrix(in->sigmoid());
       in->name =  "Input to layer " + std::to_string(i+1);
-      out->name =  "Output of layer " + std::to_string(i+1);
       ins.push_back(in);
+      out = new Matrix(in->sigmoid());
+      out->name =  "Output of layer " + std::to_string(i+1);
       outs.push_back(out);
       in = out;
     }
@@ -103,7 +103,7 @@ class FullyConnectedNetwork {
     }
   }
 
-  Matrix forwardPass(const Matrix& inputMatrix) {
+  Matrix predict(const Matrix& inputMatrix) {
     Matrix* in = new Matrix(inputMatrix);
     for(int i = 0; i < weights.size(); i++) {
       Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid());
@@ -115,16 +115,10 @@ class FullyConnectedNetwork {
     return result;
   }
 
-  int predict(const Matrix& inputMatrix){
-    Matrix res = forwardPass(inputMatrix);
-    int maxr = -1;
-    float maxval = -1000;
-    for(int i = 0; i < res.nR; i++){
-      if(res.at(i,0) > maxval){
-        maxr = i,maxval = res.at(i,0);
-      }
-    }
-    return maxr;
+  int predictClass(const Matrix& inputMatrix){
+    Matrix res = predict(inputMatrix);
+    std::pair<int, int> resArgmax = res.argmax();
+    return resArgmax.first;
   }
 
 };

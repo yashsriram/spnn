@@ -19,7 +19,7 @@ int main() {
     Matrix in(728, 1, "input");
     in.setOnes();
     /* std::cout << in << std::endl; */
-    Matrix out = fnn.forwardPass(in);
+    Matrix out = fnn.predict(in);
     std::cout << out << std::endl;
 
   } catch (std::string e) {

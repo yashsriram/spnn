@@ -53,7 +53,7 @@ int main() {
 
     string line;
     spdlog::info("Training start");
-    for (int e = 0; e < 10; ++e) {
+    for (int e = 0; e < 20; ++e) {
       spdlog::info("Epoch {}", e);
       ifstream trainData;
       trainData.open("../data/iris_train.txt");
@@ -76,7 +76,7 @@ int main() {
 
     ifstream testData;
     testData.open("../data/iris_test.txt");
-    vector<string> outputs = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
+    vector<string> classNames = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
     spdlog::info("Testing start");
     while(getline(testData, line)){
       vector<string> tokens = split(line, ',');
@@ -86,8 +86,8 @@ int main() {
       for(int i = 0; i < tokens.size(); i++){
         input.at(i, 0) = stof(tokens[i]);
       }
-      spdlog::info("Prediction {}\tactual: {}\tpredicted: {}",
-          actual == outputs[fnn.predict(input)] ? "Correct" : "Wrong", actual, outputs[fnn.predict(input)]);
+      int _class = fnn.predictClass(input);
+      spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == classNames[_class] ? "Correct" : "Wrong", actual, classNames[_class]);
     }
 
   } catch (string e) {

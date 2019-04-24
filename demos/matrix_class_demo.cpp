@@ -58,6 +58,12 @@ int main() {
     Matrix output = input * weights + bias;
     std::cout << output << std::endl;
 
+    Matrix randomized = Matrix(5, 3, "randomized");
+    randomized.setUniform(-1, 1);
+    std::cout << randomized << std::endl;
+    std::pair<int, int> argmax = randomized.argmax();
+    spdlog::info("Max of randomized = {} @ ({}, {})", randomized.at(argmax.first, argmax.second), argmax.first, argmax.second);
+
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

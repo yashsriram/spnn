@@ -5,11 +5,12 @@
 # Todo
 - [x] Control size of name field
 - [x] Impl loss function
-- [ ] Remove memleaks from step_train
+- [x] Remove memleaks from step_train
+- [ ] Full batch gradient descent: fix loss decrement and check backprop
 - [ ] Get MNIST data
-- [ ] Full batch gradient descent?
-- [ ] Forwadpass and backprop with per epoch calculation of loss and accuracy
-- [ ] evaluate on test set
-- [ ] Remove double transpose
+- [ ] Profile
+- [ ] See thrust tutorial and parallelize stuff
 - [ ] Normalize
 - [ ] Init weights and biases better
+- [ ] Improve accuracy
+- [ ] Calculate accuracy on every train

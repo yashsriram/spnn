@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <utility>
 
-bool USE_MATRIX_NAMES = true;
+bool USE_MATRIX_NAMES = false;
 
 class Matrix {
   std::vector<std::vector<float> > values;

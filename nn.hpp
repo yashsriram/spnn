@@ -116,6 +116,7 @@ class FullyConnectedNetwork {
     for(auto it : outs){
       delete it;
     }
+    delete delta;
   }
 
   Matrix predict(const Matrix& inputMatrix) const {

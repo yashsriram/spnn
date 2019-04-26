@@ -60,15 +60,7 @@ class FullyConnectedNetwork {
   }
 
   float crossEntropyLoss(const Matrix& probabilities, const Matrix& target) {
-    // std::pair<int, int> trueClassIndex = target.argmax();
-    // if (target.get(trueClassIndex) != 1) {
-    //   std::stringstream ss;
-    //   ss << "Cross Entropy Loss: Prob of true class in target is not 1.\n"
-    //      << "Target is " << target << "\n"
-    //      << "Probabilities is " << probabilities << "\n";
-    //   throw ss.str();
-    // }
-    // return -log(probabilities.get(trueClassIndex));
+    /* FIXME: possible bug here but not really relavant to computation */
     float totLoss = 0;
     for(int i = 0; i < target.nC; i++){
       std::pair<int, int> trueClassIndex = target.colmax(i);
@@ -79,12 +71,12 @@ class FullyConnectedNetwork {
           << "Probabilities is " << probabilities << "\n";
         throw ss.str();
       }
-      totLoss +=  -log(probabilities.get(trueClassIndex));    
+      totLoss += -log(probabilities.get(trueClassIndex));
     }
     return totLoss;
   }
 
-  void stepTrain(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
+  void fit(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
     std::vector<Matrix*> ins,outs;
     Matrix* in = new Matrix(inputMatrix);
     in->name = "Input Matrix";
@@ -105,7 +97,7 @@ class FullyConnectedNetwork {
     int i = weights.size() - 1;
 
     // loss
-    spdlog::info("loss: {}", this->crossEntropyLoss(outs[i + 1]->softmax(), target));
+    /* spdlog::info("loss: {}", this->crossEntropyLoss(outs[i + 1]->softmax(), target)); */
 
     // backprop
     Matrix* delta;

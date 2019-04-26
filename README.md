@@ -6,11 +6,9 @@
 - [x] Control size of name field
 - [x] Impl loss function
 - [x] Remove memleaks from step_train
-- [ ] Full batch gradient descent: fix loss decrement and check backprop
+- [x] Batch gradient descent: fix loss decrement and check backprop
+- [x] Normalize
 - [ ] Get MNIST data
 - [ ] Profile
 - [ ] See thrust tutorial and parallelize stuff
-- [ ] Normalize
-- [ ] Init weights and biases better
-- [ ] Improve accuracy
-- [ ] Calculate accuracy on every train
+- [ ] Calcuate loss and accuracy on every train

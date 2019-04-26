@@ -41,7 +41,7 @@ Matrix getTarget(const std::string& s){
 
 vector<float> getTargetVector(const std::string& s){
   int _class;
-  vector<float> result(3,0);
+  vector<float> result(3, 0);
   if(s == "Iris-setosa"){
     _class = 0;
   } else if(s == "Iris-versicolor") {
@@ -56,111 +56,80 @@ vector<float> getTargetVector(const std::string& s){
 }
 
 int main() {
-  // srand(42);  
-  std::srand ( unsigned ( std::time(0) ) );
+  srand(42);
   spdlog::set_level(spdlog::level::info);
-  spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
+  spdlog::set_pattern("%v");
   USE_MATRIX_NAMES = false;
 
   try {
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(4);
-    fnn.addLayer(12);
-    // fnn.addLayer();
+    fnn.addLayer(10);
+    fnn.addLayer(5);
     fnn.addLayer(3);
     fnn.compile();
-    float lr = 0.1;
+    float lr = 0.0005;
 
     string line;
     spdlog::info("Training start");
 
-    // SINGLE SAMPLE SGD
-    // for (int e = 0; e < 20; ++e) {
-    //   spdlog::info("Epoch {}", e);
-    //   ifstream trainData;
-    //   trainData.open("../data/iris_train.txt");
-    //   int trainingStepCounter = 0;
-    //   while(getline(trainData, line)){
-    //     vector<string> tokens = split(line, ',');
-    //     Matrix target = getTarget(tokens[tokens.size() - 1]);
-    //     tokens.pop_back();
-    //     Matrix input(tokens.size(),1,"input");
-    //     input.setZeros();
-    //     for(int i = 0; i < tokens.size(); i++) {
-    //       input.at(i, 0) = stof(tokens[i]);
-    //     }
-    //     fnn.stepTrain(input,target,lr);
-    //     /* spdlog::info("Training step {} complete", trainingStepCounter); */
-    //     trainingStepCounter++;
-    //   }
-    //   trainData.close();
-    // }
-
-    // MINI BATCH SGD
     ifstream trainDf;
     trainDf.open("../data/iris_train.txt");
-    vector< vector<float> > input,target;
-    while(getline(trainDf, line)){
+    vector< vector<float> > input;
+    vector< vector<float> > target;
+    while(getline(trainDf, line)) {
       vector<string> tokens = split(line, ',');
       vector<float> tgt = getTargetVector(tokens[tokens.size() - 1]);
       tokens.pop_back();
-      vector<float> inp(tokens.size(),0);
+      vector<float> inp(tokens.size(), 0);
       for(int i = 0; i < tokens.size(); i++) {
         inp[i] = stof(tokens[i]);
       }
       input.push_back(inp);
       target.push_back(tgt);
     }
+
+    /* Normalization */
     vector<float> mins(input[0].size(),1000000),maxs(input[0].size(),0) ;
-    for(int i = 0; i < input.size(); i++)
-    {
-      for(int j = 0; j < input[0].size(); j++)
-      {
+    for(int i = 0; i < input.size(); i++) {
+      for(int j = 0; j < input[0].size(); j++) {
         mins[j] = min(mins[j],input[i][j]);
         maxs[j] = max(maxs[j],input[i][j]);
       }
     }
-    
-    for(int i = 0; i < input.size(); i++)
-    {
-      for(int j = 0; j < input[0].size(); j++)
-      {
+    for(int i = 0; i < input.size(); i++) {
+      for(int j = 0; j < input[0].size(); j++) {
         input[i][j] = (input[i][j] - mins[j])/(maxs[j] - mins[j]);
       }
     }
 
-    int trainingStepCounter = 0;
-    const int NUM_BATCHES = 10, batch_size = 16, NUM_EPOCHS = 10*320;
+    /* Mini batch SGD */
+    const int NUM_BATCHES = 10;
+    const int BATCH_SIZE = 16;
+    const int NUM_EPOCHS = 4000;
     vector<int> seq(input.size());
-    for(int i = 0; i < input.size(); i++) seq[i] = i;
-    for(int epoch = 0; epoch < NUM_EPOCHS; epoch++)
-    {
-      std::random_shuffle(seq.begin(),seq.end());
-      for(int batch = 0; batch < NUM_BATCHES; batch++)
-      {
-        Matrix trainMiniBatch(input[0].size(),batch_size,"input minibatch");
-        Matrix targetMiniBatch(target[0].size(),batch_size,"target minibatch");
-        for(int i = 0 ; i < batch_size; i++ ){
-          for(int j = 0 ; j < input[0].size(); j++ ){
-            trainMiniBatch.at(j,i) = input[seq[(batch*batch_size + i) % input.size()]][j];
+    for(int i = 0; i < input.size(); i++) { seq[i] = i; }
+    for(int epoch = 0; epoch < NUM_EPOCHS; epoch++) {
+      spdlog::info("Epoch {} complete", epoch);
+      random_shuffle(seq.begin(),seq.end());
+      for(int batch = 0; batch < NUM_BATCHES; batch++) {
+        Matrix trainMiniBatch(input[0].size(), BATCH_SIZE, "input minibatch");
+        Matrix targetMiniBatch(target[0].size(), BATCH_SIZE, "target minibatch");
+        for(int i = 0 ; i < BATCH_SIZE; i++ ) {
+          for(int j = 0 ; j < input[0].size(); j++ ) {
+            trainMiniBatch.at(j,i) = input[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
           }
         }
-        for(int i = 0 ; i < batch_size; i++ ){
+        for(int i = 0 ; i < BATCH_SIZE; i++ ){
           for(int j = 0 ; j < target[0].size(); j++ ){
-            targetMiniBatch.at(j,i) = target[seq[(batch*batch_size + i) % input.size()]][j];
+            targetMiniBatch.at(j,i) = target[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
           }
         }
-        fnn.stepTrain(trainMiniBatch,targetMiniBatch,lr);
-        // spdlog::info("Training step {} complete", trainingStepCounter);
-        trainingStepCounter++;
+        fnn.fit(trainMiniBatch, targetMiniBatch, lr);
       }
     }
-    
-
-    
 
     trainDf.close();
-    
 
     ifstream testData;
     testData.open("../data/iris_test.txt");

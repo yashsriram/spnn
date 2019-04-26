@@ -6,23 +6,20 @@
 #include <stdlib.h>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <utility>
+
+bool USE_MATRIX_NAMES = true;
 
 class Matrix {
-  std::string name;
   std::vector<std::vector<float> > values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
-  void operator=(Matrix const &m) {
-    /* = operator is completely disabled to ensure simplicity */
-    std::stringstream ss;
-    ss <<  "Invalid operation: Attempt to assign a matrix " << m.name.c_str() << " to another matrix";
-    throw ss.str();
-  }
-
 public:
+  std::string name;
   const int nR, nC;
 
-  Matrix(int r, int c, std::string name = "<unnamed-matrix>"): nR(r), nC(c), name(name) {
+  Matrix(int r, int c, std::string name = USE_MATRIX_NAMES ? "<unnamed-matrix>" : ""): nR(r), nC(c), name(name) {
     spdlog::debug("Matrix {}: constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
@@ -30,8 +27,8 @@ public:
     }
   }
 
-  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name("(" + m.name + ")_copy") {
-    spdlog::warn("Matrix {}: copy constructor called", name.c_str());
+  Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "") {
+    spdlog::debug("Matrix {}: copy constructor called", name.c_str());
     values.resize(nR);
     for (auto& row: values) {
       row.resize(nC);
@@ -44,19 +41,72 @@ public:
     }
   }
 
+  void operator=(Matrix const &m) {
+    if (m.nC != nC || m.nR != nR) {
+      std::stringstream ss;
+      ss <<  "Invalid operation: Attempt to assign a matrix with different dimensions: Trying to assign "
+         << m.name
+         << "(" << m.nR << ", " << m.nC << ")"
+         "to matrix"
+         << name
+         << "(" << nR << ", " << nC << ")";
+      throw ss.str();
+    }
+
+    name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        values[i][j] = m.values[i][j];
+      }
+    }
+  }
+
   ~Matrix() {
     spdlog::debug("Matrix {}: destructor called", name.c_str());
   }
 
-  int getNumElements() { return nR * nC; }
+  int getNumElements() const { return nR * nC; }
+
+  void printDims() const { spdlog::info("nR = {}, nC = {}",nR,nC); }
+
+  float get(const int& i, const int& j) const {
+    return values[i][j];
+  }
+
+  float get(const std::pair<int, int>& index) const {
+    return this->get(index.first, index.second);
+  }
 
   float& at(const int& i, const int& j) {
     return values[i][j];
   }
 
-  Matrix* setName(const std::string& name) {
-    this->name = name;
-    return this;
+  std::pair<int, int> argmax() const {
+    std::vector<int> argmaxCols;
+    std::vector<float> rowwiseMaxs;
+    for (int i = 0; i < nR; ++i) {
+      auto row = values[i];
+      int argmaxCol = std::max_element(row.begin(), row.end()) - row.begin();
+      float maxInRow = *std::max_element(row.begin(), row.end());
+      argmaxCols.push_back(argmaxCol);
+      rowwiseMaxs.push_back(maxInRow);
+    }
+    int argmaxRow = std::max_element(rowwiseMaxs.begin(), rowwiseMaxs.end()) - rowwiseMaxs.begin();
+    int argmaxCol = argmaxCols[argmaxRow];
+
+    return std::pair<int, int>(argmaxRow, argmaxCol);
+  }
+
+  std::pair<int, int> colmax(int col) const {
+    float ans = -10000000;
+    int max_ind = -1;
+    for (int i = 0; i < nR; ++i) {
+      if(values[i][col] > ans){
+        max_ind = i;
+        ans = values[i][col];
+      }
+    }
+    return std::pair<int, int>(max_ind, col);
   }
 
   Matrix* setZeros() {
@@ -97,7 +147,7 @@ public:
     return this;
   }
 
-  Matrix sigmoid()  {
+  Matrix sigmoid() const {
     std::stringstream ss;
     ss << "(" << name << ")_SigmoidActivation";
     Matrix result(nR, nC, ss.str());
@@ -111,31 +161,43 @@ public:
     return result;
   }
 
-  Matrix softmax()  {
+  Matrix sigmoidDerivative() const {
     std::stringstream ss;
-    ss << "(" << name << ")_Softmax";
-    Matrix result(nR, nC, ss.str());
-
-    float denominator = 0;
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        denominator += exp(this->values[i][j]);
-      }
-    }
+    ss << "(" << name << ")_SigmoidDerivative";
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
-        result.values[i][j] = exp(this->values[i][j]) / denominator;
+        result.values[i][j] = 1 / (1 + exp(-this->values[i][j]));
+        result.values[i][j] = result.values[i][j] - (result.values[i][j]*result.values[i][j]);
       }
     }
 
     return result;
   }
 
-  Matrix operator~() {
+  Matrix softmax() const {
+    std::stringstream ss;
+    ss << "(" << name << ")_Softmax";
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+    for (int j = 0; j < nC; ++j) {
+      float sum = 0;
+      for (int i = 0; i < nR; ++i) {
+        sum += exp(this->values[i][j]);
+      }
+      for (int i = 0; i < nR; ++i) {
+        result.values[i][j] = exp(this->values[i][j]) / sum;
+      }
+    }
+
+    return result;
+  }
+
+  Matrix operator~() const {
     std::stringstream ss;
     ss << "(" << name << ")_Transpose";
-    Matrix result(nC, nR, ss.str());
+    Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -146,7 +208,21 @@ public:
     return result;
   }
 
-  Matrix operator+(Matrix const &m) {
+  Matrix operator+(Matrix const &m) const {
+    if (m.nR == 1 && nC == m.nC) {
+      std::stringstream ss;
+      ss << name << " + " << m.name;
+      Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+      for (int i = 0; i < nR; ++i) {
+        for (int j = 0; j < nC; ++j) {
+          result.values[i][j] = this->values[i][j] + m.values[0][j];
+        }
+      }
+      return result;
+
+    }
+
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix addition: Candidates are matrices "
@@ -158,7 +234,7 @@ public:
 
     std::stringstream ss;
     ss << name << " + " << m.name;
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -169,7 +245,7 @@ public:
     return result;
   }
 
-  Matrix operator-(Matrix const &m) {
+  Matrix operator-(Matrix const &m) const {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix subtraction: Candidates are matrices "
@@ -181,7 +257,7 @@ public:
 
     std::stringstream ss;
     ss << name << " - " << m.name;
-    Matrix result(nR, nC, ss.str());
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -192,7 +268,7 @@ public:
     return result;
   }
 
-  Matrix operator*(Matrix const &m) {
+  Matrix operator*(Matrix const &m) const {
     if (nC != m.nR) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
@@ -204,7 +280,7 @@ public:
 
     std::stringstream ss;
     ss << name << " * " << m.name;
-    Matrix result(nR, m.nC, ss.str());
+    Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < m.nC; ++j) {
@@ -213,6 +289,58 @@ public:
           elementSum += this->values[i][k] * m.values[k][j];
         }
         result.values[i][j] = elementSum;
+      }
+    }
+
+    return result;
+  }
+
+  Matrix operator*(float const &value) const {
+    std::stringstream ss;
+    ss << name << " * " << "const(" << value << ")";
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = this->values[i][j] * value;
+      }
+    }
+
+    return result;
+  }
+
+
+  Matrix operator%(Matrix const &m) const {
+    if (m.nC == 1 && nR == m.nR) {
+      std::stringstream ss;
+      ss << name << " % " << m.name;
+      Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+      for (int i = 0; i < nR; ++i) {
+        for (int j = 0; j < nC; ++j) {
+          result.values[i][j] = this->values[i][j] * m.values[i][0];
+        }
+      }
+
+      return result;
+    }
+
+    if (nC != m.nC || nR != m.nR) {
+      std::stringstream ss;
+      ss <<  "Invalid dimensions for matrix element wise multiplication: Candidates are matrices "
+        << name << "(" << nR << "," << nC << ")"
+        << " and "
+        << m.name << "(" << m.nR << "," << m.nC << ")";
+      throw ss.str();
+    }
+
+    std::stringstream ss;
+    ss << name << " % " << m.name;
+    Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        result.values[i][j] = this->values[i][j] * m.values[i][j];
       }
     }
 

@@ -31,7 +31,11 @@ int main() {
     Matrix E(2, 3, "E");
     E.setOnes();
     Matrix MUL = A * E;
+    Matrix MUL_CONST = A * 6;
+    Matrix MUL_ELEMENTWISE = MUL_CONST % B;
     std::cout << MUL << std::endl;
+    std::cout << MUL_CONST << std::endl;
+    std::cout << MUL_ELEMENTWISE << std::endl;
 
     Matrix TRANSPOSE = ~B;
     std::cout << TRANSPOSE << std::endl;
@@ -48,6 +52,9 @@ int main() {
     bias.setIdentity();
     std::cout << bias << std::endl;
 
+    Matrix biasSoftmax = bias.softmax();
+    std::cout << biasSoftmax << std::endl;
+
     Matrix output = input * weights + bias;
     std::cout << output << std::endl;
 
@@ -60,6 +67,12 @@ int main() {
 
     Matrix F_softmax = F.softmax();
     std::cout << F_softmax << std::endl;
+
+    Matrix randomized = Matrix(5, 3, "randomized");
+    randomized.setUniform(-1, 1);
+    std::cout << randomized << std::endl;
+    std::pair<int, int> argmax = randomized.argmax();
+    spdlog::info("Max of randomized = {} @ ({}, {})", randomized.at(argmax.first, argmax.second), argmax.first, argmax.second);
 
   } catch (std::string e) {
     std::cerr << e << std::endl;

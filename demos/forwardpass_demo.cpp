@@ -16,11 +16,22 @@ int main() {
     fnn.addLayer(10);
     fnn.compile();
 
-    Matrix in(1, 728, "input");
+    Matrix in(728, 1, "input");
     in.setOnes();
-    std::cout << in << std::endl;
-    Matrix out = fnn.forwardPass(in);
+    /* std::cout << in << std::endl; */
+    Matrix out = fnn.predict(in);
+    out.name = "unnormalized log probabilities";
     std::cout << out << std::endl;
+
+    Matrix target(10, 1, "target");
+    target.setZeros();
+    target.at(4, 0) = 1;
+    std::cout << target << std::endl;
+
+    Matrix probabilities = out.softmax();
+    std::cout << probabilities << std::endl;
+    float loss = fnn.crossEntropyLoss(probabilities, target);
+    spdlog::info("Cross entropy loss: {}", loss);
 
   } catch (std::string e) {
     spdlog::error(e);

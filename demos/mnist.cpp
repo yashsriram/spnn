@@ -74,7 +74,7 @@ int main() {
     spdlog::info("Training start");
 
     ifstream trainDf;
-    trainDf.open("../data/iris/train.txt");
+    trainDf.open("../data/iris_train.txt");
     vector< vector<float> > input;
     vector< vector<float> > target;
     while(getline(trainDf, line)) {
@@ -88,6 +88,7 @@ int main() {
       input.push_back(inp);
       target.push_back(tgt);
     }
+    trainDf.close();
 
     /* Normalization */
     vector<float> mins(input[0].size(),1000000),maxs(input[0].size(),0) ;
@@ -110,7 +111,9 @@ int main() {
     vector<int> seq(input.size());
     for(int i = 0; i < input.size(); i++) { seq[i] = i; }
     for(int epoch = 0; epoch < NUM_EPOCHS; epoch++) {
-      spdlog::info("Epoch {} complete", epoch);
+      cout << "Epoch : (" << epoch + 1 << "/" << NUM_EPOCHS << ")\r";
+      cout.flush();
+      /* spdlog::info("Epoch {} complete", epoch); */
       random_shuffle(seq.begin(),seq.end());
       for(int batch = 0; batch < NUM_BATCHES; batch++) {
         Matrix trainMiniBatch(input[0].size(), BATCH_SIZE, "input minibatch");
@@ -128,11 +131,10 @@ int main() {
         fnn.fit(trainMiniBatch, targetMiniBatch, lr);
       }
     }
-
-    trainDf.close();
+    std::cout << "\r\n";
 
     ifstream testData;
-    testData.open("../data/iris/test.txt");
+    testData.open("../data/iris_test.txt");
     vector<string> classNames = {"Iris-setosa","Iris-versicolor","Iris-virginica"};
     spdlog::info("Testing start");
     while(getline(testData, line)){

@@ -97,6 +97,18 @@ public:
     return std::pair<int, int>(argmaxRow, argmaxCol);
   }
 
+  std::pair<int, int> colmax(int col) const {
+    float ans = -10000000;
+    int max_ind = -1;
+    for (int i = 0; i < nR; ++i) {
+      if(values[i][col] > ans){
+        max_ind = i;
+        ans = values[i][col];
+      }
+    }
+    return std::pair<int, int>(max_ind, col);
+  }
+
   Matrix* setZeros() {
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
@@ -169,15 +181,12 @@ public:
     ss << "(" << name << ")_Softmax";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    float sum = 0;
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
+    for (int j = 0; j < nC; ++j) {
+      float sum = 0;
+      for (int i = 0; i < nR; ++i) {
         sum += exp(this->values[i][j]);
       }
-    }
-
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
+      for (int i = 0; i < nR; ++i) {
         result.values[i][j] = exp(this->values[i][j]) / sum;
       }
     }
@@ -200,6 +209,21 @@ public:
   }
 
   Matrix operator+(Matrix const &m) const {
+    
+    if (m.nR == 1 && nC == m.nC) {
+      std::stringstream ss;
+      ss << name << " + " << m.name;
+      Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+      for (int i = 0; i < nR; ++i) {
+        for (int j = 0; j < nC; ++j) {
+          result.values[i][j] = this->values[i][j] + m.values[0][j];
+        }
+      }
+      return result;
+
+    }
+
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix addition: Candidates are matrices "
@@ -288,6 +312,20 @@ public:
 
 
   Matrix operator%(Matrix const &m) const {
+    if (m.nC == 1 && nR == m.nR) {
+      std::stringstream ss;
+      ss << name << " % " << m.name;
+      Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+      for (int i = 0; i < nR; ++i) {
+        for (int j = 0; j < nC; ++j) {
+          result.values[i][j] = this->values[i][j] * m.values[i][0];
+        }
+      }
+
+      return result;
+    }
+
     if (nC != m.nC || nR != m.nR) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix element wise multiplication: Candidates are matrices "

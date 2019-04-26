@@ -65,11 +65,11 @@ int main() {
   try {
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(4);
-    fnn.addLayer(12);
-    // fnn.addLayer();
+    fnn.addLayer(4);
+    fnn.addLayer(10);
     fnn.addLayer(3);
     fnn.compile();
-    float lr = 0.1;
+    float lr = 0.00005;
 
     string line;
     spdlog::info("Training start");
@@ -111,52 +111,33 @@ int main() {
       input.push_back(inp);
       target.push_back(tgt);
     }
-    vector<float> mins(input[0].size(),1000000),maxs(input[0].size(),0) ;
-    for(int i = 0; i < input.size(); i++)
-    {
-      for(int j = 0; j < input[0].size(); j++)
-      {
-        mins[j] = min(mins[j],input[i][j]);
-        maxs[j] = max(maxs[j],input[i][j]);
-      }
-    }
-    
-    for(int i = 0; i < input.size(); i++)
-    {
-      for(int j = 0; j < input[0].size(); j++)
-      {
-        input[i][j] = (input[i][j] - mins[j])/(maxs[j] - mins[j]);
-      }
-    }
 
     int trainingStepCounter = 0;
-    const int NUM_BATCHES = 10, batch_size = 16, NUM_EPOCHS = 10*320;
+    const int NUM_BATCHES = 10000, batch_size = 16;
     vector<int> seq(input.size());
     for(int i = 0; i < input.size(); i++) seq[i] = i;
-    for(int epoch = 0; epoch < NUM_EPOCHS; epoch++)
+    for(int batch = 0; batch < NUM_BATCHES; batch++)
     {
       std::random_shuffle(seq.begin(),seq.end());
-      for(int batch = 0; batch < NUM_BATCHES; batch++)
-      {
-        Matrix trainMiniBatch(input[0].size(),batch_size,"input minibatch");
-        Matrix targetMiniBatch(target[0].size(),batch_size,"target minibatch");
-        for(int i = 0 ; i < batch_size; i++ ){
-          for(int j = 0 ; j < input[0].size(); j++ ){
-            trainMiniBatch.at(j,i) = input[seq[(batch*batch_size + i) % input.size()]][j];
-          }
+      Matrix trainMiniBatch(input[0].size(),batch_size,"input minibatch");
+      Matrix targetMiniBatch(target[0].size(),batch_size,"target minibatch");
+      for(int i = 0 ; i < batch_size; i++ ){
+        for(int j = 0 ; j < input[0].size(); j++ ){
+          trainMiniBatch.at(j,i) = input[seq[i]][j];
         }
-        for(int i = 0 ; i < batch_size; i++ ){
-          for(int j = 0 ; j < target[0].size(); j++ ){
-            targetMiniBatch.at(j,i) = target[seq[(batch*batch_size + i) % input.size()]][j];
-          }
-        }
-        fnn.stepTrain(trainMiniBatch,targetMiniBatch,lr);
-        // spdlog::info("Training step {} complete", trainingStepCounter);
-        trainingStepCounter++;
+        cout<<seq[i]<<" ";
       }
+      cout<<endl;
+      for(int i = 0 ; i < batch_size; i++ ){
+        for(int j = 0 ; j < target[0].size(); j++ ){
+          targetMiniBatch.at(j,i) = target[seq[i]][j];
+        }
+      }
+      fnn.stepTrain(trainMiniBatch,targetMiniBatch,lr);
+      spdlog::info("Training step {} complete", trainingStepCounter);
+      trainingStepCounter++;
     }
     
-
     
 
     trainDf.close();
@@ -172,7 +153,7 @@ int main() {
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       for(int i = 0; i < tokens.size(); i++){
-        input.at(i, 0) = (stof(tokens[i]) - mins[i])/(maxs[i] - mins[i]);
+        input.at(i, 0) = stof(tokens[i]);
       }
       int _class = fnn.predictClass(input);
       spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == classNames[_class] ? "Correct" : "Wrong", actual, classNames[_class]);

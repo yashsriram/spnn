@@ -60,15 +60,28 @@ class FullyConnectedNetwork {
   }
 
   float crossEntropyLoss(const Matrix& probabilities, const Matrix& target) {
-    std::pair<int, int> trueClassIndex = target.argmax();
-    if (target.get(trueClassIndex) != 1) {
-      std::stringstream ss;
-      ss << "Cross Entropy Loss: Prob of true class in target is not 1.\n"
-         << "Target is " << target << "\n"
-         << "Probabilities is " << probabilities << "\n";
-      throw ss.str();
+    // std::pair<int, int> trueClassIndex = target.argmax();
+    // if (target.get(trueClassIndex) != 1) {
+    //   std::stringstream ss;
+    //   ss << "Cross Entropy Loss: Prob of true class in target is not 1.\n"
+    //      << "Target is " << target << "\n"
+    //      << "Probabilities is " << probabilities << "\n";
+    //   throw ss.str();
+    // }
+    // return -log(probabilities.get(trueClassIndex));
+    float totLoss = 0;
+    for(int i = 0; i < target.nC; i++){
+      std::pair<int, int> trueClassIndex = target.colmax(i);
+      if (target.get(trueClassIndex) != 1) {
+        std::stringstream ss;
+        ss << "Cross Entropy Loss: Prob of true class in target is not 1.\n"
+          << "Target is " << target << "\n"
+          << "Probabilities is " << probabilities << "\n";
+        throw ss.str();
+      }
+      totLoss +=  -log(probabilities.get(trueClassIndex));    
     }
-    return -log(probabilities.get(trueClassIndex));
+    return totLoss;
   }
 
   void stepTrain(const Matrix& inputMatrix, const Matrix& targetMatrix, float learningRate) {
@@ -96,7 +109,7 @@ class FullyConnectedNetwork {
 
     // backprop
     Matrix* delta;
-    delta = new Matrix((target - outs[i + 1]->softmax()) % *ins[i]);
+    delta = new Matrix((target - outs[i + 1]->softmax()) % ins[i]->sigmoidDerivative());
     delta->name = "delta";
     Matrix change = (*outs[i]) * (~*delta);
     weights[i] = weights[i] + change * learningRate;

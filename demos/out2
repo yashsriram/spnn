@@ -1,0 +1,118 @@
+Total number of trainable parameters
+Training start
+loss: 4.47207
+Training step 0 complete
+loss: 4.46588
+Training step 1 complete
+loss: 4.47075
+Training step 2 complete
+loss: 4.46186
+Training step 3 complete
+loss: 4.45741
+Training step 4 complete
+loss: 4.46585
+Training step 5 complete
+loss: 4.46094
+Training step 6 complete
+loss: 4.45974
+Training step 7 complete
+loss: 4.46292
+Training step 8 complete
+loss: 4.45756
+Training step 9 complete
+loss: 4.45053
+Training step 10 complete
+loss: 4.45905
+Training step 11 complete
+loss: 4.45819
+Training step 12 complete
+loss: 4.44724
+Training step 13 complete
+loss: 4.45166
+Training step 14 complete
+loss: 4.45049
+Training step 15 complete
+loss: 4.44319
+Training step 16 complete
+loss: 4.44897
+Training step 17 complete
+loss: 4.44102
+Training step 18 complete
+loss: 4.43586
+Training step 19 complete
+loss: 4.44302
+Training step 20 complete
+loss: 4.43427
+Training step 21 complete
+loss: 4.45739
+Training step 22 complete
+loss: 4.43787
+Training step 23 complete
+loss: 4.44629
+Training step 24 complete
+loss: 4.4394
+Training step 25 complete
+loss: 4.4408
+Training step 26 complete
+loss: 4.44178
+Training step 27 complete
+loss: 4.43982
+Training step 28 complete
+loss: 4.44511
+Training step 29 complete
+loss: 4.43703
+Training step 30 complete
+loss: 4.44435
+Training step 31 complete
+loss: 4.44511
+Training step 32 complete
+loss: 4.45052
+Training step 33 complete
+loss: 4.45197
+Training step 34 complete
+loss: 4.45561
+Training step 35 complete
+loss: 4.45797
+Training step 36 complete
+loss: 4.45668
+Training step 37 complete
+loss: 4.45951
+Training step 38 complete
+loss: 4.46415
+Training step 39 complete
+loss: 4.46631
+Training step 40 complete
+loss: 4.46869
+Training step 41 complete
+loss: 4.47117
+Training step 42 complete
+loss: 4.47341
+Training step 43 complete
+loss: 4.47463
+Training step 44 complete
+loss: 4.47712
+Training step 45 complete
+loss: 4.47875
+Training step 46 complete
+loss: 4.48102
+Training step 47 complete
+loss: 4.48327
+Training step 48 complete
+loss: 4.4854
+Training step 49 complete
+Testing start
+Prediction Wrong	actual: Iris-setosa	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-setosa	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-setosa	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-setosa	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-setosa	predicted: Iris-versicolor
+Prediction Correct	actual: Iris-versicolor	predicted: Iris-versicolor
+Prediction Correct	actual: Iris-versicolor	predicted: Iris-versicolor
+Prediction Correct	actual: Iris-versicolor	predicted: Iris-versicolor
+Prediction Correct	actual: Iris-versicolor	predicted: Iris-versicolor
+Prediction Correct	actual: Iris-versicolor	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-virginica	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-virginica	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-virginica	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-virginica	predicted: Iris-versicolor
+Prediction Wrong	actual: Iris-virginica	predicted: Iris-versicolor

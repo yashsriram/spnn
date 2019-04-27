@@ -12,13 +12,16 @@
 
 using namespace std;
 
-const int FEATURES_LEN = 28 * 28;
-const int FEATURE_MAX_VALUE = 255;
-const int NUM_BATCHES = 10;
-const int BATCH_SIZE = 16;
-const int NUM_EPOCHS = 4000;
 const string TRAIN_FILE_PATH = "../data/mnist/train.csv";
 const string TEST_FILE_PATH = "../data/mnist/test.csv";
+
+const int FEATURES_LEN = 28 * 28;
+const int FEATURE_MAX_VALUE = 255;
+const int NUM_CLASSES = 10;
+
+const int NUM_EPOCHS = 3;
+const int BATCH_SIZE = 16;
+const float LEARNING_RATE = 0.01;
 
 vector<string> split(const string& s, char delimiter) {
   vector<string> tokens;
@@ -30,9 +33,9 @@ vector<string> split(const string& s, char delimiter) {
   return tokens;
 }
 
-pair< vector< vector<float> >, vector< vector<float> >  > parseFile(const string& filepath) {
+pair< vector< vector<float> >, vector< vector<int> >  > parseFile(const string& filepath) {
   vector< vector<float> > X;
-  vector< vector<float> > y;
+  vector< vector<int> > y;
 
   string line;
   ifstream stream;
@@ -45,7 +48,7 @@ pair< vector< vector<float> >, vector< vector<float> >  > parseFile(const string
       features[i] = (float) stoi(tokens[i]) / FEATURE_MAX_VALUE;
     }
 
-    vector<float> label(10, 0);
+    vector<int> label(NUM_CLASSES, 0);
     label[stoi(tokens[FEATURES_LEN])] = 1;
 
     X.push_back(features);
@@ -53,7 +56,7 @@ pair< vector< vector<float> >, vector< vector<float> >  > parseFile(const string
   }
   stream.close();
 
-  return pair< vector< vector<float> >, vector< vector<float> > >(X, y);
+  return pair< vector< vector<float> >, vector< vector<int> > >(X, y);
 }
 
 int main() {
@@ -62,9 +65,11 @@ int main() {
   spdlog::set_pattern("[%^%L%$][%t] %v");
   USE_MATRIX_NAMES = false;
 
+  spdlog::info("\nConfig:\n\tTRAIN_FILE_PATH: {}\n\tTEST_FILE_PATH: {}\n\tFEATURES_LEN: {}\n\tFEATURE_MAX_VALUE: {}\n\tNUM_CLASSES: {}\n\tNUM_EPOCHS: {}\n\tBATCH_SIZE: {}\n\tLEARNING_RATE: {}", TRAIN_FILE_PATH, TEST_FILE_PATH, FEATURES_LEN, FEATURE_MAX_VALUE, NUM_CLASSES, NUM_EPOCHS, BATCH_SIZE, LEARNING_RATE);
+
   try {
     vector< vector<float> > train_X;
-    vector< vector<float> > train_y;
+    vector< vector<int> > train_y;
     auto train_Xy = parseFile(TRAIN_FILE_PATH);
     train_X = train_Xy.first;
     train_y = train_Xy.second;
@@ -72,66 +77,93 @@ int main() {
     spdlog::info("Shape of train_y : ({}, {})", train_y.size(), train_y[0].size());
 
     vector< vector<float> > test_X;
-    vector< vector<float> > test_y;
+    vector< vector<int> > test_y;
     auto test_Xy = parseFile(TEST_FILE_PATH);
     test_X = test_Xy.first;
     test_y = test_Xy.second;
     spdlog::info("Shape of test_X  : ({}, {})", test_X.size(), test_X[0].size());
     spdlog::info("Shape of test_y  : ({}, {})", test_y.size(), test_y[0].size());
 
-    exit(0);
+    auto fnn = FullyConnectedNetwork();
+    fnn.addLayer(FEATURES_LEN);
+    fnn.addLayer(100);
+    fnn.addLayer(50);
+    fnn.addLayer(20);
+    fnn.addLayer(NUM_CLASSES);
+    fnn.compile();
 
-    /* auto fnn = FullyConnectedNetwork(); */
-    /* fnn.addLayer(4); */
-    /* fnn.addLayer(10); */
-    /* fnn.addLayer(5); */
-    /* fnn.addLayer(3); */
-    /* fnn.compile(); */
-    /* float lr = 0.0005; */
+    spdlog::info("Training start");
+    const int NUM_TRAINING_SAMPLES = train_X.size();
+    const int NUM_BATCHES = NUM_TRAINING_SAMPLES / BATCH_SIZE + 1;
+    /* Mini batch SGD */
+    for(int epochNum = 0; epochNum < NUM_EPOCHS; epochNum++) {
+      /* shuffling data indices */
+      vector<int> seq(NUM_TRAINING_SAMPLES);
+      for(int i = 0; i < NUM_TRAINING_SAMPLES; i++) { seq[i] = i; }
+      random_shuffle(seq.begin(), seq.end());
 
-    /* spdlog::info("Training start"); */
-    /* /1* Mini batch SGD *1/ */
-    /* vector<int> seq(train_X.size()); */
-    /* for(int i = 0; i < train_X.size(); i++) { seq[i] = i; } */
-    /* for(int epoch = 0; epoch < NUM_EPOCHS; epoch++) { */
-    /*   cout << "Epoch : (" << epoch + 1 << "/" << NUM_EPOCHS << ")\r"; */
-    /*   cout.flush(); */
-    /*   /1* spdlog::info("Epoch {} complete", epoch); *1/ */
-    /*   random_shuffle(seq.begin(),seq.end()); */
-    /*   for(int batch = 0; batch < NUM_BATCHES; batch++) { */
-    /*     Matrix trainMiniBatch(train_X[0].size(), BATCH_SIZE, "train_X minibatch"); */
-    /*     Matrix train_yMiniBatch(train_y[0].size(), BATCH_SIZE, "train_y minibatch"); */
-    /*     for(int i = 0 ; i < BATCH_SIZE; i++ ) { */
-    /*       for(int j = 0 ; j < train_X[0].size(); j++ ) { */
-    /*         trainMiniBatch.at(j,i) = train_X[seq[(batch*BATCH_SIZE + i) % train_X.size()]][j]; */
-    /*       } */
-    /*     } */
-    /*     for(int i = 0 ; i < BATCH_SIZE; i++ ){ */
-    /*       for(int j = 0 ; j < train_y[0].size(); j++ ){ */
-    /*         train_yMiniBatch.at(j,i) = train_y[seq[(batch*BATCH_SIZE + i) % train_X.size()]][j]; */
-    /*       } */
-    /*     } */
-    /*     fnn.fit(trainMiniBatch, train_yMiniBatch, lr); */
-    /*   } */
-    /* } */
-    /* std::cout << "\r\n"; */
+      for(int batchNum = 0; batchNum < NUM_BATCHES; batchNum++) {
+        Matrix train_X_miniBatch(train_X[0].size(), BATCH_SIZE, "train_X minibatch");
+        for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
+          int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
+          for(int feature_i = 0 ; feature_i < train_X[0].size(); feature_i++ ) {
+            train_X_miniBatch.at(feature_i, batch_i) = train_X[randomBatch_i][feature_i];
+          }
+        }
 
-    /* ifstream testData; */
-    /* testData.open("../data/iris/test.txt"); */
-    /* vector<string> classNames = {"Iris-setosa","Iris-versicolor","Iris-virginica"}; */
-    /* spdlog::info("Testing start"); */
-    /* while(getline(testData, line)){ */
-    /*   vector<string> tokens = split(line, ','); */
-    /*   string actual = tokens[tokens.size() - 1]; */
-    /*   tokens.pop_back(); */
-    /*   Matrix train_X(tokens.size(),1,"train_X"); */
-    /*   for(int i = 0; i < tokens.size(); i++){ */
-    /*     train_X.at(i, 0) = (stof(tokens[i]) - mins[i])/(maxs[i] - mins[i]); */
-    /*   } */
-    /*   int _class = fnn.predictClass(train_X); */
-    /*   spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == classNames[_class] ? "Correct" : "Wrong", actual, classNames[_class]); */
-    /* } */
-    /* testData.close(); */
+        Matrix train_y_miniBatch(train_y[0].size(), BATCH_SIZE, "train_y minibatch");
+        for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ){
+          int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
+          for(int feature_i = 0 ; feature_i < train_y[0].size(); feature_i++ ){
+            train_y_miniBatch.at(feature_i, batch_i) = train_y[randomBatch_i][feature_i];
+          }
+        }
+
+        fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
+
+        cout << "Epoch : (" << epochNum + 1 << "/" << NUM_EPOCHS << ") Batch: [" << batchNum + 1 << "/" << NUM_BATCHES << "]\r";
+        cout.flush();
+      }
+    }
+    cout << "\r\n";
+
+    /* setting up confusion matrix */
+    Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
+    confusionMatrix.setZeros();
+
+    spdlog::info("Testing start");
+    const int NUM_TESTING_SAMPLES = test_X.size();
+    for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) {
+      vector<float> test_Xi = test_X[testSample_i];
+      Matrix testSample(FEATURES_LEN, 1, "testSample");
+      for(int j = 0; j < FEATURES_LEN; j++){
+        testSample.at(j, 0) = test_Xi[j];
+      }
+
+      int actual = -1;
+      vector<int> test_yi = test_y[testSample_i];
+      for(int j = 0; j < NUM_CLASSES; j++){
+        if (test_yi[j] == 1) { actual = j; }
+      }
+
+      int prediction = fnn.predictClass(testSample);
+
+      /* spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == prediction ? "Correct" : "Wrong", actual, prediction); */
+      confusionMatrix.at(prediction, actual) += 1;
+
+      cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r";
+      cout.flush();
+    }
+    cout << "\r\n";
+
+    /* prediction analysis */
+    cout << confusionMatrix;
+    int numCorrect = 0;
+    int total = NUM_TESTING_SAMPLES;
+    for (int i = 0; i < NUM_CLASSES; ++i) {
+      numCorrect += confusionMatrix.get(i, i);
+    }
+    spdlog::info("Accuracy: {}", (float) numCorrect / total );
 
   } catch (string e) {
     spdlog::error(e);

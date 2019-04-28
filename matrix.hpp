@@ -10,6 +10,20 @@
 #include <utility>
 
 bool USE_MATRIX_NAMES = true;
+#define THREADS_PER_BLOCK 1024
+
+__global__ void matmul( float *a, float *b, float *c , int num_rows, int num_cols,int int_dim) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int x_ind = index/(num_cols), y_ind = index%(num_cols);
+    if(x_ind < num_rows && y_ind < num_cols){
+        float sum = 0;
+        for(int i=0; i < int_dim; i++){
+            sum += a[x_ind*(int_dim) + i]*b[i*(num_cols) + y_ind];
+        }
+        c[index] = sum;
+    }
+
+}
 
 class Matrix {
   std::vector<std::vector<float> > values;
@@ -268,6 +282,33 @@ public:
     return result;
   }
 
+  // Matrix operator*(Matrix const &m) const {
+  //   if (nC != m.nR) {
+  //     std::stringstream ss;
+  //     ss <<  "Invalid dimensions for matrix multiplication: Candidates are matrices "
+  //       << name << "(" << nR << "," << nC << ")"
+  //       << " and "
+  //       << m.name << "(" << m.nR << "," << m.nC << ")";
+  //     throw ss.str();
+  //   }
+
+  //   std::stringstream ss;
+  //   ss << name << " * " << m.name;
+  //   Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
+
+  //   for (int i = 0; i < nR; ++i) {
+  //     for (int j = 0; j < m.nC; ++j) {
+  //       float elementSum = 0;
+  //       for (int k = 0; k < nC; ++k) {
+  //         elementSum += this->values[i][k] * m.values[k][j];
+  //       }
+  //       result.values[i][j] = elementSum;
+  //     }
+  //   }
+
+  //   return result;
+  // }
+
   Matrix operator*(Matrix const &m) const {
     if (nC != m.nR) {
       std::stringstream ss;
@@ -278,22 +319,66 @@ public:
       throw ss.str();
     }
 
+    float *a, *b, *c; // host copies of a, b, c
+    float *dev_a, *dev_b, *dev_c; // device copies of a, b, c
+    int sz1 = nR*nC * sizeof(float), sz2 = m.nR * m.nC * sizeof(float), sz3 = nR*m.nC * sizeof(float);
+
+    // allocate device copies of a, b, c
+    cudaMalloc( (void**)&dev_a, sz1 );
+    cudaMalloc( (void**)&dev_b, sz2 );
+    cudaMalloc( (void**)&dev_c, sz3 );
+    a = (float *)malloc( sz1 );
+    b = (float *)malloc( sz2 );
+    c = (float *)malloc( sz3 );
+
+    for(int i = 0; i < nR*m.nC; i++){c[i] = 0;}
+    for(int i = 0; i < nR; i++){
+      for(int j = 0; j < nC; j++){
+        a[i*nC+j] = values[i][j];
+      }
+    }
+    for(int i = 0; i < m.nR; i++){
+      for(int j = 0; j < m.nC; j++){
+        b[i*m.nC+j] = m.values[i][j];
+      }
+    }
+    // copy inputs to device
+    cudaMemcpy( dev_a, a, sz1,cudaMemcpyHostToDevice );
+    cudaMemcpy( dev_b, b, sz2,cudaMemcpyHostToDevice );
+    cudaMemcpy( dev_c, c, sz3,cudaMemcpyHostToDevice );
+
+    int num_blocks = ( nR*m.nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    matmul<<<num_blocks,THREADS_PER_BLOCK>>>(dev_a,dev_b,dev_c,nR,m.nC,nC);
+
+    // copy device result back to host copy of c
+    cudaMemcpy( c, dev_c, sz3 , cudaMemcpyDeviceToHost );
+    
+    cudaDeviceSynchronize();
+
+
     std::stringstream ss;
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < m.nC; ++j) {
-        float elementSum = 0;
-        for (int k = 0; k < nC; ++k) {
-          elementSum += this->values[i][k] * m.values[k][j];
-        }
-        result.values[i][j] = elementSum;
+    // std::cout<<"\n";
+    for(int i = 0; i < nR; i++){
+      for(int j = 0; j < m.nC; j++){
+        result.at(i,j) = c[i*m.nC + j];
+        // std::cout<<c[i*m.nC + j]<<" ";
       }
+      // std::cout<<"\n";
     }
+    // std::cout<<"\n";
 
+    free( a ); free(  b );
+    cudaFree( dev_a );
+    cudaFree( dev_b );
+    cudaFree( dev_c );
+    free(c);
+    // exit(0);
     return result;
   }
+
 
   Matrix operator*(float const &value) const {
     std::stringstream ss;

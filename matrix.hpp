@@ -8,12 +8,144 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <thrust/device_vector.h>
+#include <curand_kernel.h>
+
 
 bool USE_MATRIX_NAMES = false;
 
+__global__ void deep_copy( float *a, const float *b, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        a[i*nC+j] = b[i*nC+j];
+      }
+    }
+}
+
+__global__ void dev_colmax( const float *a, int* ret, int nR , int nC, int col) {
+    float ans = -10000000; // CHANGE IN FUTURE
+    for (int i = 0; i < nR; ++i) {
+      if(a[i*nC+col] > ans){
+        *ret = i;
+        ans = a[i*nC+col];
+      }
+    }
+}
+
+__global__ void dev_identity( float *a, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        a[i*nC+j] = (i == j);
+      }
+    }
+}
+
+__global__ void dev_setUniform( float *a, int nR , int nC, float low, float high) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        curandState state;
+        curand_init((unsigned long long)clock(), 0, 0, &state);
+        float rand1 = curand_uniform(&state);
+        a[i*nC+j] = low + rand1 * (high - low);
+      }
+    }
+}
+
+__global__ void dev_sigmoid( const float *a, float *b, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        b[i*nC+j] = 1.0 / (1.0 + exp(-a[i*nC+j]));
+      }
+    }
+}
+
+__global__ void dev_sigmoid_derivative( const float *a, float *b, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        float r = 1.0 / (1.0 + exp(-a[i*nC+j]));
+        b[i*nC+j] = r - r*r;
+      }
+    }
+}
+
+__global__ void dev_softmax( const float *a, float *b, int nR , int nC) {
+    for (int j = 0; j < nC; ++j) {
+      float sum = 0;
+      for (int i = 0; i < nR; ++i) {
+        sum += exp(a[i*nC+j]);
+      }
+      for (int i = 0; i < nR; ++i) {
+        b[i*nC+j] = exp(a[i*nC+j]) / sum;
+      }
+    }
+}
+
+__global__ void dev_transpose( const float *a, float *b, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        b[j*nR+i] = a[i*nC+j];
+      }
+    }
+}
+
+
+__global__ void dev_coladd( const float *a, const float *b, float* c, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        c[i*nC+j] = a[i*nC+j] + b[j];
+      }
+    }
+}
+
+__global__ void dev_add( const float *a, const float *b, float* c, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        c[i*nC+j] = a[i*nC+j] + b[i*nC+j];
+      }
+    }
+}
+
+
+__global__ void dev_sub( const float *a, const float *b, float* c, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        c[i*nC+j] = a[i*nC+j] - b[i*nC+j];
+      }
+    }
+}
+
+
+__global__ void dev_mul( const float *a, const float *b, float* c, int nR , int nC, int int_dim) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        float elementSum = 0;
+        for (int k = 0; k < int_dim; ++k) {
+          elementSum += a[i*int_dim+k] * b[k*nC+j];
+        }
+        c[i*nC+j] = elementSum;
+      }
+    }
+}
+
+__global__ void dev_mulall( const float *a, const float value, float* c, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        c[i*nC+j] = a[i*nC+j] * value;
+      }
+    }
+}
+
+__global__ void dev_mulelem( const float *a, const float *b, float* c, int nR , int nC) {
+    for (int i = 0; i < nR; ++i) {
+      for (int j = 0; j < nC; ++j) {
+        c[i*nC+j] = a[i*nC+j] * b[i*nC+j];
+      }
+    }
+}
+
+
 class Matrix {
-  // std::vector<std::vector<float> > values;
-  std::vector<float> values;
+  thrust::device_vector<float> values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
 public:
@@ -29,11 +161,9 @@ public:
     spdlog::debug("Matrix {}: copy constructor called", name.c_str());
     values.resize(nR*nC);
     // deep copy the values variable
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = m.values[i*nC+j];
-      }
-    }
+    float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    deep_copy<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
   }
 
   void operator=(Matrix const &m) {
@@ -49,11 +179,9 @@ public:
     }
 
     name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = m.values[i*nC+j];
-      }
-    }
+    float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    deep_copy<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
   }
 
   ~Matrix() {
@@ -72,62 +200,46 @@ public:
     return this->get(index.first, index.second);
   }
 
-  float& at(const int& i, const int& j) {
-    return values[i*nC+j];
+  void set(const int& i, const int& j, const float val) {
+    values[i*nC+j] = val;
   }
+  
 
-  std::pair<int, int> argmax() const {
-    auto max_index = std::max_element(values.begin(),values.end()) - values.begin();
+  std::pair<int, int> argmax() const { // NOTE SOME PARALLISM IS PRESENT HERE
+    auto max_index = thrust::max_element(values.begin(),values.end()) - values.begin();
     return std::make_pair(max_index/nC, max_index%nC);
   }
 
   std::pair<int, int> colmax(int col) const {
-    float ans = -10000000; // CHANGE IN FUTURE
-    int max_ind = -1;
-    for (int i = 0; i < nR; ++i) {
-      if(values[i*nC+col] > ans){
-        max_ind = i;
-        ans = values[i*nC+col];
-      }
-    }
-    return std::pair<int, int>(max_ind, col);
+    int* max_ind;
+    int* dev_mind;
+    max_ind = (int*) malloc(sizeof(int));
+    cudaMalloc( (void**) &dev_mind, sizeof(int));
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    dev_colmax<<<1,1>>>(val_ptr,dev_mind,nR,nC,col);
+    cudaMemcpy( max_ind, dev_mind, sizeof(int) , cudaMemcpyDeviceToHost );    
+    return std::pair<int, int>(*max_ind, col);
   }
 
   Matrix* setZeros() {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = 0;
-      }
-    }
+    thrust::fill(values.begin(),values.end(),0);
     return this;
   }
 
   Matrix* setOnes() {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = 1;
-      }
-    }
+    thrust::fill(values.begin(),values.end(),1);
     return this;
   }
 
   Matrix* setIdentity() {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = (i == j);
-      }
-    }
+    float* val_ptr = thrust::raw_pointer_cast(values.data());
+    dev_identity<<<1,1>>>(val_ptr,nR,nC);
     return this;
   }
 
   Matrix* setUniform(float low, float high) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        float randomNumber = (float) rand() / RAND_MAX;
-        randomNumber = low + randomNumber * (high - low);
-        values[i*nC+j] = randomNumber;
-      }
-    }
+    float* val_ptr = thrust::raw_pointer_cast(values.data());
+    dev_setUniform<<<1,1>>>(val_ptr,nR,nC,low,high);
     return this;
   }
 
@@ -136,11 +248,9 @@ public:
     ss << "(" << name << ")_SigmoidActivation";
     Matrix result(nR, nC, ss.str());
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = 1 / (1 + exp(-this->values[i*nC+j]));
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_sigmoid<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
 
     return result;
   }
@@ -150,12 +260,9 @@ public:
     ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = 1 / (1 + exp(-this->values[i*nC+j]));
-        result.values[i*nC+j] = result.values[i*nC+j] - (result.values[i*nC+j]*result.values[i*nC+j]);
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_sigmoid_derivative<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
 
     return result;
   }
@@ -165,15 +272,9 @@ public:
     ss << "(" << name << ")_Softmax";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int j = 0; j < nC; ++j) {
-      float sum = 0;
-      for (int i = 0; i < nR; ++i) {
-        sum += exp(this->values[i*nC+j]);
-      }
-      for (int i = 0; i < nR; ++i) {
-        result.values[i*nC+j] = exp(this->values[i*nC+j]) / sum;
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_softmax<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
 
     return result;
   }
@@ -183,11 +284,9 @@ public:
     ss << "(" << name << ")_Transpose";
     Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[j*nR+i] = this->values[i*nC+j];
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_transpose<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
 
     return result;
   }
@@ -198,11 +297,11 @@ public:
       ss << name << " + " << m.name;
       Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-      for (int i = 0; i < nR; ++i) {
-        for (int j = 0; j < nC; ++j) {
-          result.values[i*nC+j] = this->values[i*nC+j] + m.values[j];
-        }
-      }
+      const float* val_ptr = thrust::raw_pointer_cast(values.data());
+      const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+      float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+      dev_coladd<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
+
       return result;
 
     }
@@ -220,11 +319,11 @@ public:
     ss << name << " + " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] + m.values[i*nC+j];
-      }
-    }
+    
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_add<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
 
     return result;
   }
@@ -243,11 +342,10 @@ public:
     ss << name << " - " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] - m.values[i*nC+j];
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_sub<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
 
     return result;
   }
@@ -266,15 +364,10 @@ public:
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < m.nC; ++j) {
-        float elementSum = 0;
-        for (int k = 0; k < nC; ++k) {
-          elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
-        }
-        result.values[i*m.nC+j] = elementSum;
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_mul<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,m.nC,nC);    
 
     return result;
   }
@@ -284,30 +377,17 @@ public:
     ss << name << " * " << "const(" << value << ")";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] * value;
-      }
-    }
+    
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_mulall<<<1,1>>>(val_ptr,value,resval_ptr,nR,nC);    
+
 
     return result;
   }
 
 
   Matrix operator%(Matrix const &m) const {
-    // if (m.nC == 1 && nR == m.nR) {
-    //   std::stringstream ss;
-    //   ss << name << " % " << m.name;
-    //   Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
-
-    //   for (int i = 0; i < nR; ++i) {
-    //     for (int j = 0; j < nC; ++j) {
-    //       result.values[i][j] = this->values[i][j] * m.values[i][0];
-    //     }
-    //   }
-
-    //   return result;
-    // }
 
     if (nC != m.nC || nR != m.nR) {
       std::stringstream ss;
@@ -322,11 +402,10 @@ public:
     ss << name << " % " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] * m.values[i*nC+j];
-      }
-    }
+    const float* val_ptr = thrust::raw_pointer_cast(values.data());
+    const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
+    float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
+    dev_mulelem<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
 
     return result;
   }

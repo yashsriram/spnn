@@ -35,7 +35,7 @@ Matrix getTarget(const std::string& s){
   }
   Matrix result = Matrix(3,1,"target");
   result.setZeros();
-  result.at(_class, 0) = 1;
+  result.set(_class, 0, 1);
   return result;
 }
 
@@ -117,12 +117,14 @@ int main() {
         Matrix targetMiniBatch(target[0].size(), BATCH_SIZE, "target minibatch");
         for(int i = 0 ; i < BATCH_SIZE; i++ ) {
           for(int j = 0 ; j < input[0].size(); j++ ) {
-            trainMiniBatch.at(j,i) = input[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
+            float temp = input[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
+            trainMiniBatch.set(j,i,temp);
           }
         }
         for(int i = 0 ; i < BATCH_SIZE; i++ ){
           for(int j = 0 ; j < target[0].size(); j++ ){
-            targetMiniBatch.at(j,i) = target[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
+            float temp = target[seq[(batch*BATCH_SIZE + i) % input.size()]][j];
+            targetMiniBatch.set(j,i,temp);
           }
         }
         fnn.fit(trainMiniBatch, targetMiniBatch, lr);
@@ -141,7 +143,8 @@ int main() {
       tokens.pop_back();
       Matrix input(tokens.size(),1,"input");
       for(int i = 0; i < tokens.size(); i++){
-        input.at(i, 0) = (stof(tokens[i]) - mins[i])/(maxs[i] - mins[i]);
+        float temp = (stof(tokens[i]) - mins[i])/(maxs[i] - mins[i]);
+        input.set(i, 0, temp);
       }
       int _class = fnn.predictClass(input);
       spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == classNames[_class] ? "Correct" : "Wrong", actual, classNames[_class]);

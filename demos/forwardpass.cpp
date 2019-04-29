@@ -25,7 +25,7 @@ int main() {
 
     Matrix target(10, 1, "target");
     target.setZeros();
-    target.at(4, 0) = 1;
+    target.set(4, 0, 1);
     std::cout << target << std::endl;
 
     Matrix probabilities = out.softmax();

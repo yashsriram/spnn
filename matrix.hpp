@@ -2,18 +2,75 @@
 #define MATRIX_HPP
 
 #include <spdlog/spdlog.h>
-#include <math.h>
 #include <stdlib.h>
 #include <sstream>
 #include <vector>
-#include <algorithm>
 #include <utility>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/random.h>
+#include <thrust/transform.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <cublas_v2.h>
 
 bool USE_MATRIX_NAMES = false;
 
+// /**********************/
+// /* cuBLAS ERROR CHECK */
+// /**********************/
+// #ifndef cublasSafeCall
+// #define cublasSafeCall(err)     __cublasSafeCall(err, __FILE__, __LINE__)
+// #endif
+
+// inline void __cublasSafeCall(cublasStatus_t err, const char *file, const int line)
+// {
+//     if( CUBLAS_STATUS_SUCCESS != err) {
+//         fprintf(stderr, "CUBLAS error in file '%s', line %d\n \nerror %d \nterminating!\n",__FILE__, __LINE__,err); 
+//         getch(); cudaDeviceReset(); assert(0); 
+//     }
+// }
+
+//https://stackoverflow.com/questions/12614164/generating-random-numbers-with-uniform-distribution-using-thrust
+struct prg
+{
+    float a, b;
+
+    __host__ __device__
+    prg(float _a=0.f, float _b=1.f) : a(_a), b(_b) {};
+
+    __host__ __device__
+        float operator()(const unsigned int n) const
+        {
+            thrust::default_random_engine rng;
+            thrust::uniform_real_distribution<float> dist(a, b);
+            rng.discard(n);
+
+            return dist(rng);
+        }
+};
+
+struct dev_sigmoid
+{
+    __host__ __device__
+        float operator()(const float x) const
+        {
+          return (1.0f)/(1+exp(-x));
+        }
+};
+
+struct dev_sigmoidDerivative
+{
+    __host__ __device__
+        float operator()(const float x) const
+        {
+          float r = (1.0f)/(1+exp(-x));
+          return r - (r*r);
+        }
+};
+
+
 class Matrix {
-  // std::vector<std::vector<float> > values;
-  std::vector<float> values;
+  thrust::device_vector<float> values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
 public:
@@ -29,11 +86,12 @@ public:
     spdlog::debug("Matrix {}: copy constructor called", name.c_str());
     values.resize(nR*nC);
     // deep copy the values variable
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = m.values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     values[i*nC+j] = m.values[i*nC+j];
+    //   }
+    // }
+    thrust::copy(m.values.begin(),m.values.end(),values.begin());
   }
 
   void operator=(Matrix const &m) {
@@ -49,11 +107,12 @@ public:
     }
 
     name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = m.values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     values[i*nC+j] = m.values[i*nC+j];
+    //   }
+    // }
+    thrust::copy(m.values.begin(),m.values.end(),values.begin());
   }
 
   ~Matrix() {
@@ -72,16 +131,20 @@ public:
     return this->get(index.first, index.second);
   }
 
-  float& at(const int& i, const int& j) {
-    return values[i*nC+j];
+  // float& at(const int& i, const int& j) {
+  //   return values[i*nC+j];
+  // }
+
+  void set(const int& i, const int& j, const float &val) {
+    values[i*nC+j] = val;
   }
 
   std::pair<int, int> argmax() const {
-    auto max_index = std::max_element(values.begin(),values.end()) - values.begin();
+    auto max_index = thrust::max_element(values.begin(),values.end()) - values.begin();
     return std::make_pair(max_index/nC, max_index%nC);
   }
 
-  std::pair<int, int> colmax(int col) const {
+  std::pair<int, int> colmax(int col) const {// optimize
     float ans = -10000000; // CHANGE IN FUTURE
     int max_ind = -1;
     for (int i = 0; i < nR; ++i) {
@@ -94,24 +157,16 @@ public:
   }
 
   Matrix* setZeros() {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = 0;
-      }
-    }
+    thrust::fill(values.begin(),values.end(),0);
     return this;
   }
 
   Matrix* setOnes() {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        values[i*nC+j] = 1;
-      }
-    }
+    thrust::fill(values.begin(),values.end(),1);
     return this;
   }
 
-  Matrix* setIdentity() {
+  Matrix* setIdentity() { // TO DO
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < nC; ++j) {
         values[i*nC+j] = (i == j);
@@ -121,13 +176,12 @@ public:
   }
 
   Matrix* setUniform(float low, float high) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        float randomNumber = (float) rand() / RAND_MAX;
-        randomNumber = low + randomNumber * (high - low);
-        values[i*nC+j] = randomNumber;
-      }
-    }
+    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+
+    thrust::transform(index_sequence_begin,
+            index_sequence_begin + nR*nC,
+            values.begin(),
+            prg(low,high));
     return this;
   }
 
@@ -136,11 +190,10 @@ public:
     ss << "(" << name << ")_SigmoidActivation";
     Matrix result(nR, nC, ss.str());
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = 1 / (1 + exp(-this->values[i*nC+j]));
-      }
-    }
+    thrust::transform(values.begin(),
+            values.end(),
+            result.values.begin(),
+            dev_sigmoid());
 
     return result;
   }
@@ -150,17 +203,15 @@ public:
     ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = 1 / (1 + exp(-this->values[i*nC+j]));
-        result.values[i*nC+j] = result.values[i*nC+j] - (result.values[i*nC+j]*result.values[i*nC+j]);
-      }
-    }
+    thrust::transform(values.begin(),
+            values.end(),
+            result.values.begin(),
+            dev_sigmoidDerivative());
 
     return result;
   }
 
-  Matrix softmax() const {
+  Matrix softmax() const { // TO DO
     std::stringstream ss;
     ss << "(" << name << ")_Softmax";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
@@ -178,16 +229,23 @@ public:
     return result;
   }
 
-  Matrix operator~() const {
+  Matrix operator~()  {
     std::stringstream ss;
     ss << "(" << name << ")_Transpose";
     Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[j*nR+i] = this->values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     result.values[j*nR+i] = this->values[i*nC+j];
+    //   }
+    // }
+    float* dv_ptr_in  = thrust::raw_pointer_cast(values.data());
+    float* dv_ptr_out = thrust::raw_pointer_cast(result.values.data());
+    float alpha = 1.;
+    float beta  = 0.;
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, nR, nC, &alpha, dv_ptr_in, nC, &beta, dv_ptr_in, nC, dv_ptr_out, nR); 
 
     return result;
   }

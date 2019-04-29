@@ -107,7 +107,8 @@ int main() {
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_X[0].size(); feature_i++ ) {
-            train_X_miniBatch.at(feature_i, batch_i) = train_X[randomBatch_i][feature_i];
+            float temp = train_X[randomBatch_i][feature_i];
+            train_X_miniBatch.set(feature_i, batch_i,temp);
           }
         }
 
@@ -115,7 +116,8 @@ int main() {
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ){
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_y[0].size(); feature_i++ ){
-            train_y_miniBatch.at(feature_i, batch_i) = train_y[randomBatch_i][feature_i];
+            float temp = train_y[randomBatch_i][feature_i];
+            train_y_miniBatch.set(feature_i, batch_i,temp);
           }
         }
 
@@ -137,7 +139,7 @@ int main() {
       vector<float> test_Xi = test_X[testSample_i];
       Matrix testSample(FEATURES_LEN, 1, "testSample");
       for(int j = 0; j < FEATURES_LEN; j++){
-        testSample.at(j, 0) = test_Xi[j];
+        testSample.set(j, 0, test_Xi[j]);
       }
 
       int actual = -1;
@@ -149,7 +151,9 @@ int main() {
       int prediction = fnn.predictClass(testSample);
 
       /* spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == prediction ? "Correct" : "Wrong", actual, prediction); */
-      confusionMatrix.at(prediction, actual) += 1;
+      float temp = confusionMatrix.get(prediction, actual) + 1;
+      confusionMatrix.set(prediction, actual,temp);
+
 
       cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r";
       cout.flush();

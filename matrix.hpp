@@ -10,7 +10,7 @@
 #include <utility>
 #include <thrust/host_vector.h>
 
-bool USE_MATRIX_NAMES = false;
+bool USE_MATRIX_NAMES = true;
 
 class Matrix {
   // std::vector<std::vector<float> > values;

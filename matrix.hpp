@@ -8,12 +8,13 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <thrust/host_vector.h>
 
 bool USE_MATRIX_NAMES = false;
 
 class Matrix {
   // std::vector<std::vector<float> > values;
-  std::vector<float> values;
+  thrust::host_vector<float> values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
 public:

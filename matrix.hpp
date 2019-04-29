@@ -1,6 +1,8 @@
 #ifndef MATRIX_HPP
 #define MATRIX_HPP
 
+#define THREADS_PER_BLOCK 1024
+
 #include <spdlog/spdlog.h>
 #include <math.h>
 #include <stdlib.h>
@@ -14,133 +16,137 @@
 
 bool USE_MATRIX_NAMES = false;
 
-__global__ void deep_copy( float *a, const float *b, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        a[i*nC+j] = b[i*nC+j];
-      }
-    }
+__global__ void deep_copy( float *a, const float *b) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    a[index] = b[index];
 }
 
-__global__ void dev_colmax( const float *a, int* ret, int nR , int nC, int col) {
+__global__ void dev_colmax( const float *a, int* ret, int nR ,int nC, int col, int comps) {
+    __shared__ float maxes[1024];
+    __shared__ int maxindex[1024];
     float ans = -10000000; // CHANGE IN FUTURE
-    for (int i = 0; i < nR; ++i) {
-      if(a[i*nC+col] > ans){
-        *ret = i;
+    int index = threadIdx.x * comps;
+    int max_ind = -1;
+    for(int i = index; i < index + comps; i++){
+      if(i < nR && a[i*nC+col] > ans){
         ans = a[i*nC+col];
+        max_ind = i;
       }
+    }
+    maxes[threadIdx.x] = ans;
+    maxindex[threadIdx.x] = max_ind;
+    __syncthreads(); 
+    if( 0 == threadIdx.x ) {
+      int fin = -1;
+      float fans = -10000000;
+      for( int i = 0; i < blockDim.x; i++ ){
+        if(maxes[i] > fans){
+          fans = maxes[i];
+          fin = maxindex[i];
+        }
+      }
+      *ret = fin;
+    }
+    
+}
+
+__global__ void dev_identity( float *a , int nC) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int xind = index/nC, yind = index%nC;
+    if(xind == yind){
+      a[index] = 1;
+    }
+    else{
+      a[index] = 0;
     }
 }
 
-__global__ void dev_identity( float *a, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        a[i*nC+j] = (i == j);
+__global__ void dev_setUniform( float *a, float low, float high) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    curandState state;
+    curand_init((unsigned long long)clock(), 0, 0, &state);
+    float rand1 = curand_uniform(&state);
+    a[index] = low + rand1 * (high - low);
+}
+
+__global__ void dev_sigmoid( const float *a, float *b) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    b[index] = 1.0 / (1.0 + exp(-a[index]));
+}
+
+__global__ void dev_sigmoid_derivative( const float *a, float *b) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    float r = 1.0 / (1.0 + exp(-a[index]));
+    b[index] = r - r*r;
+}
+
+__global__ void dev_softmax( const float *a, float *b, int nR , int nC, int nops) {
+    int j = blockIdx.x;
+    __shared__ float sums[1024];
+    __shared__ float totSum;
+    int index = threadIdx.x;
+    sums[index] = 0;
+    for (int i = index*nops; i < index + nops; ++i) {
+      if(i < nR) sums[index] += exp(a[i*nC+j]);
+    }
+    __syncthreads(); 
+    if(index == 0){
+      totSum = 0;
+      for(int i = 0; i < blockDim.x; i++){
+        totSum += sums[i];
       }
+    }
+    __syncthreads();
+    for (int i = index*nops; i < index + nops; ++i) {
+      if(i < nR) b[i*nC+j] = exp(a[i*nC+j]) / totSum;
     }
 }
 
-__global__ void dev_setUniform( float *a, int nR , int nC, float low, float high) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        curandState state;
-        curand_init((unsigned long long)clock(), 0, 0, &state);
-        float rand1 = curand_uniform(&state);
-        a[i*nC+j] = low + rand1 * (high - low);
-      }
-    }
-}
-
-__global__ void dev_sigmoid( const float *a, float *b, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        b[i*nC+j] = 1.0 / (1.0 + exp(-a[i*nC+j]));
-      }
-    }
-}
-
-__global__ void dev_sigmoid_derivative( const float *a, float *b, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        float r = 1.0 / (1.0 + exp(-a[i*nC+j]));
-        b[i*nC+j] = r - r*r;
-      }
-    }
-}
-
-__global__ void dev_softmax( const float *a, float *b, int nR , int nC) {
-    for (int j = 0; j < nC; ++j) {
-      float sum = 0;
-      for (int i = 0; i < nR; ++i) {
-        sum += exp(a[i*nC+j]);
-      }
-      for (int i = 0; i < nR; ++i) {
-        b[i*nC+j] = exp(a[i*nC+j]) / sum;
-      }
-    }
-}
-
-__global__ void dev_transpose( const float *a, float *b, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        b[j*nR+i] = a[i*nC+j];
-      }
-    }
+__global__ void dev_transpose( const float *a, float *b , int nR, int nC) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int xind = index/nC, yind = index%nC;
+    b[yind*nR+xind] = a[index];    
 }
 
 
-__global__ void dev_coladd( const float *a, const float *b, float* c, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        c[i*nC+j] = a[i*nC+j] + b[j];
-      }
-    }
+__global__ void dev_coladd( const float *a, const float *b, float* c , int nC) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int yind = index%nC;
+    c[index] = a[index] + b[yind];
 }
 
-__global__ void dev_add( const float *a, const float *b, float* c, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        c[i*nC+j] = a[i*nC+j] + b[i*nC+j];
-      }
-    }
+__global__ void dev_add( const float *a, const float *b, float* c) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    c[index] = a[index] + b[index];
 }
 
 
-__global__ void dev_sub( const float *a, const float *b, float* c, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        c[i*nC+j] = a[i*nC+j] - b[i*nC+j];
-      }
-    }
+__global__ void dev_sub( const float *a, const float *b, float* c) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    c[index] = a[index] - b[index];
 }
 
 
 __global__ void dev_mul( const float *a, const float *b, float* c, int nR , int nC, int int_dim) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        float elementSum = 0;
-        for (int k = 0; k < int_dim; ++k) {
-          elementSum += a[i*int_dim+k] * b[k*nC+j];
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int x_ind = index/(nC), y_ind = index%(nC);
+    if(x_ind < nR && y_ind < nC){
+        int sum = 0;
+        for(int i=0; i < int_dim; i++){
+            sum += a[x_ind*(int_dim) + i]*b[i*(nC) + y_ind];
         }
-        c[i*nC+j] = elementSum;
-      }
+        c[index] = sum;
     }
 }
 
 __global__ void dev_mulall( const float *a, const float value, float* c, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        c[i*nC+j] = a[i*nC+j] * value;
-      }
-    }
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    c[index] = a[index] * value;
 }
 
 __global__ void dev_mulelem( const float *a, const float *b, float* c, int nR , int nC) {
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        c[i*nC+j] = a[i*nC+j] * b[i*nC+j];
-      }
-    }
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    c[index] = a[index] * b[index];
 }
 
 
@@ -163,7 +169,8 @@ public:
     // deep copy the values variable
     float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
-    deep_copy<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    deep_copy<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr);
   }
 
   void operator=(Matrix const &m) {
@@ -181,7 +188,8 @@ public:
     name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
     float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
-    deep_copy<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    deep_copy<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr);
   }
 
   ~Matrix() {
@@ -216,7 +224,9 @@ public:
     max_ind = (int*) malloc(sizeof(int));
     cudaMalloc( (void**) &dev_mind, sizeof(int));
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
-    dev_colmax<<<1,1>>>(val_ptr,dev_mind,nR,nC,col);
+    int comparisons_per_thread = 10;
+    int num_threads = (nR + comparisons_per_thread - 1)/comparisons_per_thread;
+    dev_colmax<<<1,num_threads>>>(val_ptr,dev_mind,nR,nC,col,comparisons_per_thread);
     cudaMemcpy( max_ind, dev_mind, sizeof(int) , cudaMemcpyDeviceToHost );    
     return std::pair<int, int>(*max_ind, col);
   }
@@ -233,13 +243,15 @@ public:
 
   Matrix* setIdentity() {
     float* val_ptr = thrust::raw_pointer_cast(values.data());
-    dev_identity<<<1,1>>>(val_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_identity<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,nC);
     return this;
   }
 
   Matrix* setUniform(float low, float high) {
     float* val_ptr = thrust::raw_pointer_cast(values.data());
-    dev_setUniform<<<1,1>>>(val_ptr,nR,nC,low,high);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_setUniform<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,low,high);
     return this;
   }
 
@@ -250,7 +262,8 @@ public:
 
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_sigmoid<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_sigmoid<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr);
 
     return result;
   }
@@ -262,7 +275,8 @@ public:
 
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_sigmoid_derivative<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_sigmoid_derivative<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr);
 
     return result;
   }
@@ -274,7 +288,9 @@ public:
 
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_softmax<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    // int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    int ops_per_thread = 10;
+    dev_softmax<<<nC, (nR+ops_per_thread-1)/ops_per_thread>>>(val_ptr,mval_ptr,nR,nC,ops_per_thread);
 
     return result;
   }
@@ -286,7 +302,8 @@ public:
 
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     float* mval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_transpose<<<1,1>>>(val_ptr,mval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_transpose<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,nR,nC);
 
     return result;
   }
@@ -300,7 +317,8 @@ public:
       const float* val_ptr = thrust::raw_pointer_cast(values.data());
       const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
       float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-      dev_coladd<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
+      int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+      dev_coladd<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,resval_ptr,nC);
 
       return result;
 
@@ -323,7 +341,8 @@ public:
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
     float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_add<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_add<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,resval_ptr);
 
     return result;
   }
@@ -345,7 +364,8 @@ public:
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
     float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_sub<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_sub<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,resval_ptr);
 
     return result;
   }
@@ -367,7 +387,8 @@ public:
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
     float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_mul<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,m.nC,nC);    
+    int num_blocks = (nR*m.nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_mul<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,resval_ptr,nR,m.nC,nC);    
 
     return result;
   }
@@ -380,7 +401,8 @@ public:
     
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_mulall<<<1,1>>>(val_ptr,value,resval_ptr,nR,nC);    
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_mulall<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,value,resval_ptr,nR,nC);    
 
 
     return result;
@@ -405,7 +427,8 @@ public:
     const float* val_ptr = thrust::raw_pointer_cast(values.data());
     const float* mval_ptr = thrust::raw_pointer_cast(m.values.data());
     float* resval_ptr = thrust::raw_pointer_cast(result.values.data());
-    dev_mulelem<<<1,1>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
+    int num_blocks = (nR*nC + THREADS_PER_BLOCK)/THREADS_PER_BLOCK;
+    dev_mulelem<<<num_blocks, THREADS_PER_BLOCK>>>(val_ptr,mval_ptr,resval_ptr,nR,nC);
 
     return result;
   }

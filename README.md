@@ -1,4 +1,9 @@
 # Points
+* Things to consider during analysis
+  * correctness (> 10% accuracy)
+  * repeatablity (nothing fancy)
+  * memory check (no mem leaks or other bad stuff using valgrind --tool=memcheck)
+  * time profile (nvprof)
 * Initialization done uniformly in -1 to 1
 * Layers are numbered from 0 i.e. first hidden layer is layer 1
 
@@ -8,7 +13,5 @@
 - [x] Remove memleaks from step_train
 - [x] Batch gradient descent: fix loss decrement and check backprop
 - [x] Normalize
-- [ ] Get MNIST data
-- [ ] Profile
-- [ ] See thrust tutorial and parallelize stuff
-- [ ] Calcuate loss and accuracy on every train
+- [x] Get MNIST data
+- [x] Profile

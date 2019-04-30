@@ -19,8 +19,8 @@ const int FEATURES_LEN = 28 * 28;
 const int FEATURE_MAX_VALUE = 255;
 const int NUM_CLASSES = 10;
 
-const int NUM_EPOCHS = 3;
-const int BATCH_SIZE = 16;
+const int NUM_EPOCHS = 1;
+const int BATCH_SIZE = 512;
 const float LEARNING_RATE = 0.01;
 
 vector<string> split(const string& s, char delimiter) {
@@ -107,7 +107,7 @@ int main() {
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_X[0].size(); feature_i++ ) {
-            train_X_miniBatch.at(feature_i, batch_i) = train_X[randomBatch_i][feature_i];
+            train_X_miniBatch.set(feature_i, batch_i, train_X[randomBatch_i][feature_i]);
           }
         }
 
@@ -115,7 +115,7 @@ int main() {
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ){
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_y[0].size(); feature_i++ ){
-            train_y_miniBatch.at(feature_i, batch_i) = train_y[randomBatch_i][feature_i];
+            train_y_miniBatch.set(feature_i, batch_i, train_y[randomBatch_i][feature_i]);
           }
         }
 
@@ -137,7 +137,7 @@ int main() {
       vector<float> test_Xi = test_X[testSample_i];
       Matrix testSample(FEATURES_LEN, 1, "testSample");
       for(int j = 0; j < FEATURES_LEN; j++){
-        testSample.at(j, 0) = test_Xi[j];
+        testSample.set(j, 0, test_Xi[j]);
       }
 
       int actual = -1;
@@ -149,7 +149,7 @@ int main() {
       int prediction = fnn.predictClass(testSample);
 
       /* spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == prediction ? "Correct" : "Wrong", actual, prediction); */
-      confusionMatrix.at(prediction, actual) += 1;
+      confusionMatrix.set(prediction, actual, confusionMatrix.get(prediction, actual) + 1);
 
       cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r";
       cout.flush();

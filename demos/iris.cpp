@@ -3,11 +3,11 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "../matrix.hpp"
-#include "../nn.hpp"
 #include <algorithm>
 #include <ctime>
 #include <cstdlib>
+#include "../lib/serial/matrix.hpp"
+#include "../lib/serial/nn.hpp"
 
 using namespace std;
 

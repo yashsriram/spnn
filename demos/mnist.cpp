@@ -7,8 +7,8 @@
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 #include <utility>
-#include "../matrix.hpp"
-#include "../nn.hpp"
+#include "../lib/serial/matrix.hpp"
+#include "../lib/serial/nn.hpp"
 
 using namespace std;
 

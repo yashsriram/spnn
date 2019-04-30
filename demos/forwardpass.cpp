@@ -1,8 +1,8 @@
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <iostream>
-#include "../matrix.hpp"
-#include "../nn.hpp"
+#include "../lib/serial/matrix.hpp"
+#include "../lib/serial/nn.hpp"
 
 int main() {
   srand(42);

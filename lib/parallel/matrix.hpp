@@ -5,14 +5,14 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sstream>
-#include <vector>
 #include <algorithm>
 #include <utility>
+#include <thrust/device_vector.h>
 
 bool USE_MATRIX_NAMES = true;
 
 class Matrix {
-  std::vector<float> values;
+  thrust::device_vector<float> values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
 
 public:

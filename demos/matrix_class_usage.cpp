@@ -24,7 +24,7 @@ int main() {
     std::cout << DIFF << std::endl;
 
     Matrix SUM_DEEP_COPY = SUM;
-    SUM_DEEP_COPY.at(1, 1) = 10;
+    SUM_DEEP_COPY.set(1, 1, 10);
     std::cout << SUM_DEEP_COPY << std::endl;
     std::cout << SUM << std::endl;
 
@@ -72,7 +72,7 @@ int main() {
     randomized.setUniform(-1, 1);
     std::cout << randomized << std::endl;
     std::pair<int, int> argmax = randomized.argmax();
-    spdlog::info("Max of randomized = {} @ ({}, {})", randomized.at(argmax.first, argmax.second), argmax.first, argmax.second);
+    spdlog::info("Max of randomized = {} @ ({}, {})", randomized.get(argmax.first, argmax.second), argmax.first, argmax.second);
 
   } catch (std::string e) {
     std::cerr << e << std::endl;

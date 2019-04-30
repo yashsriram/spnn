@@ -19,7 +19,7 @@ const int FEATURES_LEN = 28 * 28;
 const int FEATURE_MAX_VALUE = 255;
 const int NUM_CLASSES = 10;
 
-const int NUM_EPOCHS = 10;
+const int NUM_EPOCHS = 2;
 const int BATCH_SIZE = 16;
 const float LEARNING_RATE = 0.01;
 
@@ -59,7 +59,7 @@ pair< vector< vector<float> >, vector< vector<int> >  > parseFile(const string& 
   return pair< vector< vector<float> >, vector< vector<int> > >(X, y);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
   srand(42);
   spdlog::set_level(spdlog::level::info);
   spdlog::set_pattern("[%^%L%$][%t] %v");
@@ -86,8 +86,6 @@ int main() {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(1000);
-    fnn.addLayer(500);
     fnn.addLayer(100);
     fnn.addLayer(20);
     fnn.addLayer(NUM_CLASSES);

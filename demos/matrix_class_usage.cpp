@@ -1,12 +1,9 @@
-#include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <iostream>
-#include "../lib/serial/matrix.hpp"
+#include "../lib/parallel/matrix.hpp"
 
 int main() {
   srand(42);
-  spdlog::set_level(spdlog::level::debug);
-  spdlog::set_pattern("[%^%L%$][%t][%H:%M:%S.%f] %v");
 
   try {
     Matrix A(3, 2, "A");
@@ -72,7 +69,7 @@ int main() {
     randomized.setUniform(-1, 1);
     std::cout << randomized << std::endl;
     std::pair<int, int> argmax = randomized.argmax();
-    spdlog::info("Max of randomized = {} @ ({}, {})", randomized.get(argmax.first, argmax.second), argmax.first, argmax.second);
+    printf("Max of randomized = %f @ (%d, %d)\n", randomized.get(argmax.first, argmax.second), argmax.first, argmax.second);
 
   } catch (std::string e) {
     std::cerr << e << std::endl;

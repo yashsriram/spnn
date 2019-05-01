@@ -28,7 +28,7 @@ class FullyConnectedNetwork {
     }
 
     if (isCompiled) {
-      spdlog::warn("Attempt to compile neural net multiple times!");
+      printf("Attempt to compile neural net multiple times!\n");
       return;
     }
 
@@ -42,7 +42,7 @@ class FullyConnectedNetwork {
 
       numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
     }
-    spdlog::info("Total number of trainable parameters : {}", numTrainableParams);
+    printf("Total number of trainable parameters : %d\n", numTrainableParams);
 
     for(int i = 0; i < weights.size(); i++) {
       std::stringstream name;
@@ -97,7 +97,7 @@ class FullyConnectedNetwork {
     int i = weights.size() - 1;
 
     // loss
-    /* spdlog::info("loss: {}", this->crossEntropyLoss(outs[i + 1]->softmax(), target)); */
+    /* printf("loss: %f\n", this->crossEntropyLoss(outs[i + 1]->softmax(), target)); */
 
     // backprop
     Matrix* delta;

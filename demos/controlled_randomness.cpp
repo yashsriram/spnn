@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <iostream>
-#include "../lib/serial/matrix.hpp"
+#include "../lib/parallel/matrix.hpp"
 
 int main() {
   /* set random seed; this controls randomness */

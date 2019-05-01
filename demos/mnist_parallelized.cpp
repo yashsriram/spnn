@@ -131,43 +131,41 @@ int main(int argc, char* argv[]) {
     }
     cout << "\r\n";
 
-    /* /1* setting up confusion matrix *1/ */
-    /* Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix"); */
-    /* confusionMatrix.setZeros(); */
+    /* setting up confusion matrix */
+    Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
+    confusionMatrix.setZeros();
 
-    /* printf("Testing start"); */
-    /* const int NUM_TESTING_SAMPLES = test_X.size(); */
-    /* for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) { */
-    /*   vector<float> test_Xi = test_X[testSample_i]; */
-    /*   Matrix testSample(FEATURES_LEN, 1, "testSample"); */
-    /*   for(int j = 0; j < FEATURES_LEN; j++){ */
-    /*     testSample.at(j, 0) = test_Xi[j]; */
-    /*   } */
+    printf("Testing start\n");
+    const int NUM_TESTING_SAMPLES = test_X.size() / FEATURES_LEN;
+    for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) {
+      Matrix testSample(FEATURES_LEN, 1, "testSample");
+      for(int j = 0; j < FEATURES_LEN; j++){
+        testSample.set(j, 0, test_X[testSample_i * FEATURES_LEN + j]);
+      }
 
-    /*   int actual = -1; */
-    /*   vector<int> test_yi = test_y[testSample_i]; */
-    /*   for(int j = 0; j < NUM_CLASSES; j++){ */
-    /*     if (test_yi[j] == 1) { actual = j; } */
-    /*   } */
+      int actual = -1;
+      for(int j = 0; j < NUM_CLASSES; j++){
+        if (test_y[testSample_i * NUM_CLASSES + j] == 1) { actual = j; }
+      }
 
-    /*   int prediction = fnn.predictClass(testSample); */
+      int prediction = fnn.predictClass(testSample);
 
-    /*   /1* printf("Prediction %s\tactual: %d\tpredicted: %d", actual == prediction ? "Correct" : "Wrong", actual, prediction); *1/ */
-    /*   confusionMatrix.at(prediction, actual) += 1; */
+      /* printf("Prediction %s\tactual: %d\tpredicted: %d", actual == prediction ? "Correct" : "Wrong", actual, prediction); */
+      confusionMatrix.set(prediction, actual, confusionMatrix.get(prediction, actual) + 1);
 
-    /*   cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r"; */
-    /*   cout.flush(); */
-    /* } */
-    /* cout << "\r\n"; */
+      cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r";
+      cout.flush();
+    }
+    cout << "\r\n";
 
-    /* /1* prediction analysis *1/ */
-    /* cout << confusionMatrix; */
-    /* int numCorrect = 0; */
-    /* int total = NUM_TESTING_SAMPLES; */
-    /* for (int i = 0; i < NUM_CLASSES; ++i) { */
-    /*   numCorrect += confusionMatrix.get(i, i); */
-    /* } */
-    /* printf("Accuracy: %f", (float) numCorrect / total ); */
+    /* prediction analysis */
+    cout << confusionMatrix;
+    int numCorrect = 0;
+    int total = NUM_TESTING_SAMPLES;
+    for (int i = 0; i < NUM_CLASSES; ++i) {
+      numCorrect += confusionMatrix.get(i, i);
+    }
+    printf("Accuracy: %f\n", (float) numCorrect / total );
 
   } catch (string e) {
     printf("%s", e.c_str());

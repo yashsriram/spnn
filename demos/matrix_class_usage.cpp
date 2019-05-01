@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <iostream>
-#include "../lib/parallel/matrix.hpp"
+#include "../lib/cuda/matrix.hpp"
 
 int main() {
   srand(42);

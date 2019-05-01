@@ -8,8 +8,8 @@
 #include <utility>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
-#include "../lib/parallel/matrix.hpp"
-#include "../lib/parallel/nn.hpp"
+#include "../lib/cuda/matrix.hpp"
+#include "../lib/cuda/nn.hpp"
 
 using namespace std;
 

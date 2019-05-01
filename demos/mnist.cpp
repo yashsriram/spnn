@@ -7,8 +7,8 @@
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 #include <utility>
-#include "../lib/parallel/matrix.hpp"
-#include "../lib/parallel/nn.hpp"
+#include "../lib/cuda/matrix.hpp"
+#include "../lib/cuda/nn.hpp"
 
 using namespace std;
 

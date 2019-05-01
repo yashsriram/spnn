@@ -8,16 +8,13 @@
 #include <utility>
 #include <thrust/device_vector.h>
 
+int MAX_THREADS_PER_BLOCK = 1024;
 bool USE_MATRIX_NAMES = true;
 
 namespace MatrixKernels {
 
 __global__ void deepCopy(float *a, const float *b, int nR, int nC) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      a[i * nC + j] = b[i * nC + j];
-    }
-  }
+  a[blockIdx.x * nC + threadIdx.x] = b[blockIdx.x * nC + threadIdx.x];
 }
 
 __global__ void setIdentity(float *a, int nR, int nC) {
@@ -89,15 +86,18 @@ __global__ void subtract(const float *a, const float *b, float* c, int nR , int 
   }
 }
 
-__global__ void mul( const float *a, const float *b, float* c, int nR , int nC, int int_dim) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      float elementSum = 0;
-      for (int k = 0; k < int_dim; ++k) {
-        elementSum += a[i*int_dim+k] * b[k*nC+j];
-      }
-      c[i * nC + j] = elementSum;
-    }
+__global__ void mul(const float *a, const float *b, float* c, int nR , int internalDim, int nC) {
+  int myId = blockIdx.x * blockDim.x + threadIdx.x;
+  if (myId >= nR * nC) {
+    return;
+  }
+
+  int rowNum = myId / nC;
+  int colNum = myId - rowNum * nC;
+
+  c[myId] = 0;
+  for (int k = 0; k < internalDim; ++k) {
+    c[myId] += a[rowNum * internalDim + k] * b[k * nC + colNum];
   }
 }
 
@@ -134,7 +134,7 @@ public:
   Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "") {
     values.resize(nR*nC);
     // deep copy the values variable
-    MatrixKernels::deepCopy<<<1,1>>>(thrust::raw_pointer_cast(values.data()),
+    MatrixKernels::deepCopy<<< nR, nC >>>(thrust::raw_pointer_cast(values.data()),
                                      thrust::raw_pointer_cast(m.values.data()), nR, nC);
   }
 
@@ -151,7 +151,7 @@ public:
     }
 
     name = USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "";
-    MatrixKernels::deepCopy<<<1,1>>>(thrust::raw_pointer_cast(values.data()),
+    MatrixKernels::deepCopy<<< nR, nC >>>(thrust::raw_pointer_cast(values.data()),
                                      thrust::raw_pointer_cast(m.values.data()), nR, nC);
   }
 
@@ -337,10 +337,10 @@ public:
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    MatrixKernels::mul<<<1, 1>>>(
+    MatrixKernels::mul<<< (nR * m.nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
         thrust::raw_pointer_cast(values.data()),
         thrust::raw_pointer_cast(m.values.data()),
-        thrust::raw_pointer_cast(result.values.data()), nR, m.nC, nC);
+        thrust::raw_pointer_cast(result.values.data()), nR, nC, m.nC);
 
     return result;
   }

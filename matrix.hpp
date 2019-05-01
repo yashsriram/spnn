@@ -12,8 +12,11 @@
 #include <thrust/transform.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <cublas_v2.h>
+#include <thrust/functional.h>
 
-bool USE_MATRIX_NAMES = false;
+// using namespace thrust::placeholders;
+
+bool USE_MATRIX_NAMES = true;
 
 // /**********************/
 // /* cuBLAS ERROR CHECK */
@@ -278,11 +281,20 @@ public:
     ss << name << " + " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] + m.values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     result.values[i*nC+j] = this->values[i*nC+j] + m.values[i*nC+j];
+    //   }
+    // }
+    const float* dv_ptr_in1  = thrust::raw_pointer_cast(values.data());
+    const float* dv_ptr_in2  = thrust::raw_pointer_cast(m.values.data());
+    float* dv_ptr_out = thrust::raw_pointer_cast(result.values.data());
+    float alpha = 1.;
+    float beta  = 1.;
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_N, nC, nR, &alpha, dv_ptr_in1, nC, &beta, dv_ptr_in2, nC, dv_ptr_out, nC); 
+
 
     return result;
   }
@@ -301,11 +313,20 @@ public:
     ss << name << " - " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] - m.values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     result.values[i*nC+j] = this->values[i*nC+j] - m.values[i*nC+j];
+    //   }
+    // }
+    const float* dv_ptr_in1  = thrust::raw_pointer_cast(values.data());
+    const float* dv_ptr_in2  = thrust::raw_pointer_cast(m.values.data());
+    float* dv_ptr_out = thrust::raw_pointer_cast(result.values.data());
+    float alpha = 1.;
+    float beta  = -1.;
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_N, nC, nR, &alpha, dv_ptr_in1, nC, &beta, dv_ptr_in2, nC, dv_ptr_out, nC); 
+
 
     return result;
   }
@@ -324,16 +345,24 @@ public:
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < m.nC; ++j) {
-        float elementSum = 0;
-        for (int k = 0; k < nC; ++k) {
-          elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
-        }
-        result.values[i*m.nC+j] = elementSum;
-      }
-    }
-
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < m.nC; ++j) {
+    //     float elementSum = 0;
+    //     for (int k = 0; k < nC; ++k) {
+    //       elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
+    //     }
+    //     result.values[i*m.nC+j] = elementSum;
+    //   }
+    // }
+    const float* dv_ptr_in1  = thrust::raw_pointer_cast(values.data());
+    const float* dv_ptr_in2  = thrust::raw_pointer_cast(m.values.data());
+    float* dv_ptr_out = thrust::raw_pointer_cast(result.values.data());
+    float alpha = 1.;
+    float beta  = 0.;
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_T, nR, m.nC, nC, &alpha, dv_ptr_in1, nC, dv_ptr_in2, m.nC, &beta, dv_ptr_out, nR);
+    // cudaDeviceSynchronize();
     return result;
   }
 
@@ -342,11 +371,12 @@ public:
     ss << name << " * " << "const(" << value << ")";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] * value;
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     result.values[i*nC+j] = this->values[i*nC+j] * value;
+    //   }
+    // }
+    thrust::transform(values.begin(), values.end(), result.values.begin(), [=] __host__ __device__ (float x) { return value*x; }); 
 
     return result;
   }
@@ -380,11 +410,12 @@ public:
     ss << name << " % " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < nC; ++j) {
-        result.values[i*nC+j] = this->values[i*nC+j] * m.values[i*nC+j];
-      }
-    }
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < nC; ++j) {
+    //     result.values[i*nC+j] = this->values[i*nC+j] * m.values[i*nC+j];
+    //   }
+    // }
+    thrust::transform(values.begin(), values.end(), m.values.begin(), result.values.begin(),thrust::multiplies<float>());
 
     return result;
   }

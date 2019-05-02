@@ -7,8 +7,10 @@
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 #include <utility>
-#include "../lib/cuda/matrix.hpp"
-#include "../lib/cuda/nn.hpp"
+#include <cblas.h>
+
+#include "../lib/serial/matrix.hpp"
+#include "../lib/serial/nn.hpp"
 
 using namespace std;
 
@@ -87,7 +89,10 @@ int main(int argc, char* argv[]) {
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
     fnn.addLayer(100);
-    fnn.addLayer(20);
+    fnn.addLayer(100);
+    fnn.addLayer(100);
+    fnn.addLayer(100);
+    fnn.addLayer(100);
     fnn.addLayer(NUM_CLASSES);
     fnn.compile();
 

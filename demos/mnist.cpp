@@ -19,8 +19,8 @@ const int FEATURES_LEN = 28 * 28;
 const int FEATURE_MAX_VALUE = 255;
 const int NUM_CLASSES = 10;
 
-const int NUM_EPOCHS = 3;
-const int BATCH_SIZE = 16;
+const int NUM_EPOCHS = 2;
+const int BATCH_SIZE = 50;
 const float LEARNING_RATE = 0.01;
 
 vector<string> split(const string& s, char delimiter) {
@@ -86,8 +86,8 @@ int main() {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(100);
-    fnn.addLayer(50);
+    // fnn.addLayer(100);
+    // fnn.addLayer(100);
     fnn.addLayer(20);
     fnn.addLayer(NUM_CLASSES);
     fnn.compile();

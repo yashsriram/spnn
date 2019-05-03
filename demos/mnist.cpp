@@ -66,6 +66,9 @@ int main(int argc, char* argv[]) {
   spdlog::set_level(spdlog::level::info);
   spdlog::set_pattern("[%^%L%$][%t] %v");
   USE_MATRIX_NAMES = false;
+  int num_threads = 8;
+  goto_set_num_threads(num_threads);
+  openblas_set_num_threads(num_threads);
 
   spdlog::info("\nConfig:\n\tTRAIN_FILE_PATH: {}\n\tTEST_FILE_PATH: {}\n\tFEATURES_LEN: {}\n\tFEATURE_MAX_VALUE: {}\n\tNUM_CLASSES: {}\n\tNUM_EPOCHS: {}\n\tBATCH_SIZE: {}\n\tLEARNING_RATE: {}", TRAIN_FILE_PATH, TEST_FILE_PATH, FEATURES_LEN, FEATURE_MAX_VALUE, NUM_CLASSES, NUM_EPOCHS, BATCH_SIZE, LEARNING_RATE);
 
@@ -88,11 +91,10 @@ int main(int argc, char* argv[]) {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(100);
-    fnn.addLayer(100);
-    fnn.addLayer(100);
-    fnn.addLayer(100);
-    fnn.addLayer(100);
+    fnn.addLayer(512);
+    fnn.addLayer(128);
+    fnn.addLayer(64);
+    fnn.addLayer(32);
     fnn.addLayer(NUM_CLASSES);
     fnn.compile();
 

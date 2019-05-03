@@ -142,6 +142,11 @@ public:
     values[i*nC+j] = val;
   }
 
+  void setValues(thrust::host_vector<float> &vec){
+    values = vec;
+  }
+
+
   std::pair<int, int> argmax() const {
     auto max_index = thrust::max_element(values.begin(),values.end()) - values.begin();
     return std::make_pair(max_index/nC, max_index%nC);

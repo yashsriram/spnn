@@ -84,11 +84,42 @@ int main() {
     spdlog::info("Shape of test_X  : ({}, {})", test_X.size(), test_X[0].size());
     spdlog::info("Shape of test_y  : ({}, {})", test_y.size(), test_y[0].size());
 
+    thrust::host_vector<float> trainX_host(train_X.size()*train_X[0].size());
+    thrust::host_vector<float> trainY_host(train_y.size()*train_y[0].size());
+    thrust::host_vector<float> testX_host(test_X.size()*test_X[0].size());
+    thrust::host_vector<float> testY_host(test_y.size()*test_y[0].size());
+    for(int i = 0; i < train_X.size(); i++){
+      for(int j = 0; j < train_X[0].size(); j++){
+        trainX_host[i*train_X[0].size()+j] = train_X[i][j];
+      }
+    }
+    for(int i = 0; i < train_y.size(); i++){
+      for(int j = 0; j < train_y[0].size(); j++){
+        trainY_host[i*train_y[0].size()+j] = train_y[i][j];
+      }
+    }
+    for(int i = 0; i < test_X.size(); i++){
+      for(int j = 0; j < test_X[0].size(); j++){
+        testX_host[i*test_X[0].size()+j] = test_X[i][j];
+      }
+    }
+    for(int i = 0; i < test_y.size(); i++){
+      for(int j = 0; j < test_y[0].size(); j++){
+        testY_host[i*test_y[0].size()+j] = test_y[i][j];
+      }
+    }
+
+    thrust::device_vector<float> trainX = trainX_host;
+    thrust::device_vector<float> trainY = trainY_host;
+    thrust::device_vector<float> testX = testX_host;
+    thrust::device_vector<float> testY = testY_host;
+    
+
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    // fnn.addLayer(100);
-    // fnn.addLayer(100);
-    fnn.addLayer(20);
+    fnn.addLayer(100);
+    fnn.addLayer(100);
+    fnn.addLayer(100);
     fnn.addLayer(NUM_CLASSES);
     fnn.compile();
 
@@ -104,22 +135,28 @@ int main() {
 
       for(int batchNum = 0; batchNum < NUM_BATCHES; batchNum++) {
         Matrix train_X_miniBatch(train_X[0].size(), BATCH_SIZE, "train_X minibatch");
+        thrust::host_vector<float> X_mb(train_X[0].size() * BATCH_SIZE);
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_X[0].size(); feature_i++ ) {
             float temp = train_X[randomBatch_i][feature_i];
-            train_X_miniBatch.set(feature_i, batch_i,temp);
+            // train_X_miniBatch.set(feature_i, batch_i,temp);
+            X_mb[feature_i * BATCH_SIZE + batch_i] = temp;
           }
         }
+        train_X_miniBatch.setValues(X_mb);
 
         Matrix train_y_miniBatch(train_y[0].size(), BATCH_SIZE, "train_y minibatch");
+        thrust::host_vector<float> Y_mb(train_X[0].size() * BATCH_SIZE);
         for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ){
           int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
           for(int feature_i = 0 ; feature_i < train_y[0].size(); feature_i++ ){
             float temp = train_y[randomBatch_i][feature_i];
-            train_y_miniBatch.set(feature_i, batch_i,temp);
+            // train_y_miniBatch.set(feature_i, batch_i,temp);
+            Y_mb[feature_i * BATCH_SIZE + batch_i] = temp;
           }
         }
+        train_y_miniBatch.setValues(Y_mb);
 
         fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
 
@@ -130,17 +167,21 @@ int main() {
     cout << "\r\n";
 
     /* setting up confusion matrix */
-    Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
-    confusionMatrix.setZeros();
+    // Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
+    // confusionMatrix.setZeros();
+    thrust::host_vector<float> confusionMatrix(NUM_CLASSES*NUM_CLASSES,0);
 
     spdlog::info("Testing start");
     const int NUM_TESTING_SAMPLES = test_X.size();
     for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) {
       vector<float> test_Xi = test_X[testSample_i];
       Matrix testSample(FEATURES_LEN, 1, "testSample");
+      thrust::host_vector<float> testSample_host(FEATURES_LEN);
       for(int j = 0; j < FEATURES_LEN; j++){
-        testSample.set(j, 0, test_Xi[j]);
+        // testSample.set(j, 0, test_Xi[j]);
+        testSample_host[j] = test_Xi[j];
       }
+      testSample.setValues(testSample_host);
 
       int actual = -1;
       vector<int> test_yi = test_y[testSample_i];
@@ -151,8 +192,8 @@ int main() {
       int prediction = fnn.predictClass(testSample);
 
       /* spdlog::info("Prediction {}\tactual: {}\tpredicted: {}", actual == prediction ? "Correct" : "Wrong", actual, prediction); */
-      float temp = confusionMatrix.get(prediction, actual) + 1;
-      confusionMatrix.set(prediction, actual,temp);
+      float temp = confusionMatrix[prediction*NUM_CLASSES + actual] + 1;
+      confusionMatrix[prediction*NUM_CLASSES + actual] = temp;
 
 
       cout << "Testing : (" << testSample_i + 1 << "/" << NUM_TESTING_SAMPLES << ")\r";
@@ -161,11 +202,17 @@ int main() {
     cout << "\r\n";
 
     /* prediction analysis */
-    cout << confusionMatrix;
+    // cout << confusionMatrix;
+    for(int i = 0; i < NUM_CLASSES; i++){
+      for(int j = 0; j < NUM_CLASSES; j++){
+        cout<<confusionMatrix[i*NUM_CLASSES + j]<<" ";
+      }
+      cout<<"\n";
+    }
     int numCorrect = 0;
     int total = NUM_TESTING_SAMPLES;
     for (int i = 0; i < NUM_CLASSES; ++i) {
-      numCorrect += confusionMatrix.get(i, i);
+      numCorrect += confusionMatrix[i*NUM_CLASSES+ i];
     }
     spdlog::info("Accuracy: {}", (float) numCorrect / total );
 

@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <iomanip>
+#include <omp.h>
+#include <cblas.h>
 
 bool USE_MATRIX_NAMES = true;
 
@@ -261,22 +264,40 @@ public:
       throw ss.str();
     }
 
+    // omp_set_num_threads(8);
+
     std::stringstream ss;
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
-
+    // Matrix result2(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
+    
     for (int i = 0; i < nR; ++i) {
       for (int j = 0; j < m.nC; ++j) {
         float elementSum = 0;
+        // #pragma omp parallel for reduction(+:elementSum)
         for (int k = 0; k < nC; ++k) {
           elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
         }
         result.values[i*m.nC+j] = elementSum;
       }
     }
+    // const float* A = values.data();
+    // const float* B = m.values.data();
+    // float* C = result.values.data();
+    // float alpha = 1.f, beta = 0.f;
 
+    // cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+    //         nR, m.nC, nC , alpha, A, nC, B, m.nC, beta, C, m.nC);
+
+    /*for(int i=0; i < result.values.size(); i++){
+      if((int(result.values[i]) != int(result2.values[i]))){
+        std::cout<<result.values[i]<<" "<<result2.values[i]<<std::endl;
+        exit(0);
+      }
+    }*/
     return result;
   }
+
 
   Matrix operator*(float const &value) const {
     std::stringstream ss;

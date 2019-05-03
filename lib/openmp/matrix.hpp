@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <omp.h>
 
 bool USE_MATRIX_NAMES = true;
 
@@ -265,14 +266,24 @@ public:
     ss << name << " * " << m.name;
     Matrix result(nR, m.nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    for (int i = 0; i < nR; ++i) {
-      for (int j = 0; j < m.nC; ++j) {
-        float elementSum = 0;
-        for (int k = 0; k < nC; ++k) {
-          elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
-        }
-        result.values[i*m.nC+j] = elementSum;
+    // for (int i = 0; i < nR; ++i) {
+    //   for (int j = 0; j < m.nC; ++j) {
+    //     float elementSum = 0;
+    //     for (int k = 0; k < nC; ++k) {
+    //       elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
+    //     }
+    //     result.values[i*m.nC+j] = elementSum;
+    //   }
+    // }
+    omp_set_num_threads(8);
+    #pragma omp parallel for default(shared)
+    for(int t=0; t < nR*m.nC; t++){
+      int i = t/m.nC,j = t%m.nC;
+      float elementSum = 0;
+      for (int k = 0; k < nC; ++k) {
+        elementSum += this->values[i*nC+k] * m.values[k*m.nC+j];
       }
+      result.values[t] = elementSum;      
     }
 
     return result;

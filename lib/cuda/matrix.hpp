@@ -177,6 +177,10 @@ public:
     return this->get(index.first, index.second);
   }
 
+  float* getRawPointer() {
+    return thrust::raw_pointer_cast(values.data());
+  }
+
   void set(const int& i, const int& j, const float& k) {
     values[i * nC + j] = k;
   }

@@ -127,10 +127,11 @@ __global__ void mulElementwise( const float *a, const float *b, float* c, int nR
 
 };
 
+int DEEP_COPY_COUNTER = 0;
+
 class Matrix {
   thrust::device_vector<float> values;
   friend std::ostream& operator<<(std::ostream&, const Matrix&);
-
 public:
   std::string name;
   const int nR, nC;
@@ -140,6 +141,7 @@ public:
   }
 
   Matrix(const Matrix& m) : nR(m.nR), nC(m.nC), name(USE_MATRIX_NAMES ? "(" + m.name + ")_copy" : "") {
+    DEEP_COPY_COUNTER++;
     values.resize(nR*nC);
     // deep copy the values variable
     MatrixKernels::deepCopy<<< nR, nC >>>(thrust::raw_pointer_cast(values.data()),
@@ -175,6 +177,10 @@ public:
 
   float get(const std::pair<int, int>& index) const {
     return this->get(index.first, index.second);
+  }
+
+  const float* getConstRawPointer() const {
+    return (const float*) thrust::raw_pointer_cast(values.data());
   }
 
   float* getRawPointer() {

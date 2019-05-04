@@ -8,3 +8,6 @@ mnist_parallel.out: mnist_parallel.cpp
 
 mnist_openmp.out: mnist_openmp.cpp
 	g++ -fopenmp mnist_openmp.cpp -o mnist_openmp.out
+
+clean:
+	rm -f mnist_serial.out mnist_parallel.out mnist_openmp.out

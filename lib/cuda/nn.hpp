@@ -4,6 +4,35 @@
 #include "matrix.hpp"
 #include <vector>
 
+__global__ void forwardPassStep(
+    /* Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid()); */
+    float* out, const int outNR, const int outNC,
+    const float* in, int inNR, int inNC,
+    const float* weightMatrix, int weightMatrixNR, int weightMatrixNC,
+    const float* biasMatrix, int biasMatrixNR, int biasMatrixNC) {
+
+    int myId = blockIdx.x * blockDim.x + threadIdx.x;
+    if (myId >= outNR * outNC) { return; }
+
+    int outRowNum = myId / outNC;
+    int outColNum = myId - outRowNum * outNC;
+
+    /* (~*in) * weightMatrix */
+    float inTr_MUL_weights = 0;
+    for (int k = 0; k < weightMatrixNR; ++k) {
+      inTr_MUL_weights += in[k * inNC + outColNum] * weightMatrix[k * weightMatrixNC + outRowNum];
+    }
+
+    /* (~*in) * weightMatrix + bias */
+    float inTr_MUL_weights_PLUS_bias = inTr_MUL_weights + biasMatrix[outColNum * biasMatrixNC + outRowNum];
+
+    /* sigmoid((~*in) * weightMatrix + bias) */
+    float inTr_MUL_weights_PLUS_bias_SIGMOID = 1.0 / (1.0 + exp(-inTr_MUL_weights_PLUS_bias));
+
+    /* ~(sigmoid((~*in) * weightMatrix + bias)) */
+    out[outRowNum * outNC + outColNum] = inTr_MUL_weights_PLUS_bias_SIGMOID;
+}
+
 class FullyConnectedNetwork {
   std::vector<int> layerDims;
   std::vector<Matrix> weights;
@@ -41,7 +70,9 @@ class FullyConnectedNetwork {
       biases[i].setZeros();
 
       numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
+      printf("layer: %d\tnumber of nodes: %d\n", i, layerDims[i]);
     }
+    printf("layer: %d\tnumber of nodes: %d\n", layerDims.size() - 1, layerDims[layerDims.size() - 1]);
     printf("Total number of trainable parameters : %d\n", numTrainableParams);
 
     for(int i = 0; i < weights.size(); i++) {
@@ -127,7 +158,36 @@ class FullyConnectedNetwork {
   Matrix predict(const Matrix& inputMatrix) const {
     Matrix* in = new Matrix(inputMatrix);
     for(int i = 0; i < weights.size(); i++) {
-      Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid());
+      /* An example for debugging forwardPassStep kernel */
+      /* Matrix out(3, 1); */
+      /* Matrix input(2, 1); */
+      /* input.setOnes(); */
+      /* Matrix weightMatrix(2, 3); */
+      /* weightMatrix.setUniform(-1, 1); */
+      /* Matrix biasMatrix(1, 3); */
+      /* biasMatrix.setIdentity(); */
+      /* std::cout << input << std::endl; */
+      /* std::cout << weightMatrix << std::endl; */
+      /* std::cout << biasMatrix << std::endl; */
+
+      /* forwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /*     out.getRawPointer(), out.nR, out.nC, */
+      /*     input.getConstRawPointer(), input.nR, input.nC, */
+      /*     weightMatrix.getConstRawPointer(), weightMatrix.nR, weightMatrix.nC, */
+      /*     biasMatrix.getConstRawPointer(), biasMatrix.nR, biasMatrix.nC */
+      /*     ); */
+      /* cudaDeviceSynchronize(); */
+      /* std::cout << out << std::endl; */
+      /* exit(-1); */
+
+      Matrix out(weights[i].nC, in->nC);
+      forwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+          out.getRawPointer(), out.nR, out.nC,
+          in->getConstRawPointer(), in->nR, in->nC,
+          weights[i].getConstRawPointer(), weights[i].nR, weights[i].nC,
+          biases[i].getConstRawPointer(), biases[i].nR, biases[i].nC
+          );
+
       delete in;
       in = new Matrix(out);
     }

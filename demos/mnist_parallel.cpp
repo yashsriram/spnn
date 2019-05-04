@@ -78,6 +78,12 @@ __global__ void makeTrainyBatch(float* matrix, const int nC, const int* train_y,
   }
 }
 
+__global__ void makeTestSample(float* matrix, const int nC, const float* test_X, const int testSample_i, const int numFeatures) {
+  for(int j = 0; j < numFeatures; j++){
+    matrix[j * nC + 0] = test_X[testSample_i * numFeatures + j];
+  }
+}
+
 int main(int argc, char* argv[]) {
   srand(42);
   USE_MATRIX_NAMES = false;
@@ -108,7 +114,6 @@ int main(int argc, char* argv[]) {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(512);
     fnn.addLayer(128);
     fnn.addLayer(64);
     fnn.addLayer(32);
@@ -155,7 +160,7 @@ int main(int argc, char* argv[]) {
             NUM_CLASSES
         );
 
-        fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
+        /* fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE); */
 
         cout << "Epoch : (" << epochNum + 1 << "/" << NUM_EPOCHS << ") Batch: [" << batchNum + 1 << "/" << NUM_BATCHES << "]\r";
         cout.flush();
@@ -163,17 +168,22 @@ int main(int argc, char* argv[]) {
     }
     cout << "\r\n";
 
+    printf("Testing start\n");
     /* setting up confusion matrix */
     Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
     confusionMatrix.setZeros();
-
-    printf("Testing start\n");
     const int NUM_TESTING_SAMPLES = test_X.size() / FEATURES_LEN;
+    int numCorrect = 0;
+    int total = NUM_TESTING_SAMPLES;
+    Matrix testSample(FEATURES_LEN, 1, "testSample");
     for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) {
-      Matrix testSample(FEATURES_LEN, 1, "testSample");
-      for(int j = 0; j < FEATURES_LEN; j++){
-        testSample.set(j, 0, test_X[testSample_i * FEATURES_LEN + j]);
-      }
+      makeTestSample<<< 1, 1 >>>(
+          testSample.getRawPointer(),
+          testSample.nC,
+          raw_pointer_cast(test_X_dev.data()),
+          testSample_i,
+          FEATURES_LEN
+      );
 
       int actual = -1;
       for(int j = 0; j < NUM_CLASSES; j++){
@@ -192,12 +202,11 @@ int main(int argc, char* argv[]) {
 
     /* prediction analysis */
     cout << confusionMatrix;
-    int numCorrect = 0;
-    int total = NUM_TESTING_SAMPLES;
     for (int i = 0; i < NUM_CLASSES; ++i) {
       numCorrect += confusionMatrix.get(i, i);
     }
     printf("Accuracy: %f\n", (float) numCorrect / total );
+    printf("DEEP_COPY_COUNTER: %d\n", DEEP_COPY_COUNTER);
 
   } catch (string e) {
     printf("%s", e.c_str());

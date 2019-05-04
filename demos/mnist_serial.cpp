@@ -84,7 +84,6 @@ int main(int argc, char* argv[]) {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(512);
     fnn.addLayer(128);
     fnn.addLayer(64);
     fnn.addLayer(32);
@@ -118,7 +117,7 @@ int main(int argc, char* argv[]) {
           }
         }
 
-        fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
+        /* fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE); */
 
         cout << "Epoch : (" << epochNum + 1 << "/" << NUM_EPOCHS << ") Batch: [" << batchNum + 1 << "/" << NUM_BATCHES << "]\r";
         cout.flush();

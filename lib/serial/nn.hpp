@@ -41,7 +41,9 @@ class FullyConnectedNetwork {
       biases[i].setZeros();
 
       numTrainableParams += weights[i].getNumElements() + biases[i].getNumElements();
+      printf("layer: %d\tnumber of nodes: %d\n", i, layerDims[i]);
     }
+    printf("layer: %d\tnumber of nodes: %d\n", layerDims.size() - 1, layerDims[layerDims.size() - 1]);
     spdlog::info("Total number of trainable parameters : {}", numTrainableParams);
 
     for(int i = 0; i < weights.size(); i++) {

@@ -130,11 +130,15 @@ __global__ void mulScalar( const float *a, const float value, float* c, int nR ,
 }
 
 __global__ void mulElementwise( const float *a, const float *b, float* c, int nR , int nC) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      c[i * nC + j] = a[i * nC + j] * b[i * nC + j];
-    }
+  int myId = blockIdx.x * blockDim.x + threadIdx.x;
+  if (myId >= nR * nC) {
+    return;
   }
+
+  int i = myId / nC;
+  int j = myId - i * nC;
+
+  c[i * nC + j] = a[i * nC + j] * b[i * nC + j];
 }
 
 };
@@ -400,7 +404,7 @@ public:
     ss << name << " * " << "const(" << value << ")";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    MatrixKernels::mulScalar<<< nR * nC / MAX_THREADS_PER_BLOCK + 1, MAX_THREADS_PER_BLOCK>>>(
+    MatrixKernels::mulScalar<<< (nR * nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
         thrust::raw_pointer_cast(values.data()),
         value,
         thrust::raw_pointer_cast(result.values.data()), nR, nC);
@@ -423,7 +427,7 @@ public:
     ss << name << " % " << m.name;
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    MatrixKernels::mulElementwise<<<1, 1>>>(
+    MatrixKernels::mulElementwise<<<(nR * m.nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
         thrust::raw_pointer_cast(values.data()),
         thrust::raw_pointer_cast(m.values.data()),
         thrust::raw_pointer_cast(result.values.data()), nR, nC);

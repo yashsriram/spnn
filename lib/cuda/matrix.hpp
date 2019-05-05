@@ -26,20 +26,28 @@ __global__ void setIdentity(float *a, int nR, int nC) {
 }
 
 __global__ void sigmoid(const float *a, float *b, int nR, int nC) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      b[i * nC + j] = 1.0 / (1.0 + exp(-a[i * nC + j]));
-    }
+  int myId = blockIdx.x * blockDim.x + threadIdx.x;
+  if (myId >= nR * nC) {
+    return;
   }
+
+  int i = myId / nC;
+  int j = myId - i * nC;
+
+  b[i * nC + j] = 1.0 / (1.0 + exp(-a[i * nC + j]));
 }
 
 __global__ void sigmoidDerivative(const float *a, float *b, int nR , int nC) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      float r = 1.0 / (1.0 + exp(-a[i * nC + j]));
-      b[i * nC + j] = r - r*r;
-    }
+  int myId = blockIdx.x * blockDim.x + threadIdx.x;
+  if (myId >= nR * nC) {
+    return;
   }
+
+  int i = myId / nC;
+  int j = myId - i * nC;
+
+  float r = 1.0 / (1.0 + exp(-a[i * nC + j]));
+  b[i * nC + j] = r - r*r;
 }
 
 __global__ void softmax( const float *a, float *b, int nR , int nC) {
@@ -55,11 +63,15 @@ __global__ void softmax( const float *a, float *b, int nR , int nC) {
 }
 
 __global__ void transpose(const float *a, float *b, int nR , int nC) {
-  for (int i = 0; i < nR; ++i) {
-    for (int j = 0; j < nC; ++j) {
-      b[j * nR + i] = a[i * nC + j];
-    }
+  int myId = blockIdx.x * blockDim.x + threadIdx.x;
+  if (myId >= nR * nC) {
+    return;
   }
+
+  int i = myId / nC;
+  int j = myId - i * nC;
+
+  b[j * nR + i] = a[i * nC + j];
 }
 
 __global__ void coladd(const float *a, const float *b, float* c, int nR , int nC) {
@@ -255,8 +267,9 @@ public:
     ss << "(" << name << ")_SigmoidActivation";
     Matrix result(nR, nC, ss.str());
 
-    MatrixKernels::sigmoid<<<1, 1>>>(thrust::raw_pointer_cast(values.data()),
-                                     thrust::raw_pointer_cast(result.values.data()), nR, nC);
+    MatrixKernels::sigmoid<<<(nR * nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
+        thrust::raw_pointer_cast(values.data()),
+        thrust::raw_pointer_cast(result.values.data()), nR, nC);
 
     return result;
   }
@@ -266,8 +279,9 @@ public:
     ss << "(" << name << ")_SigmoidDerivative";
     Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
 
-    MatrixKernels::sigmoidDerivative<<<1, 1>>>(thrust::raw_pointer_cast(values.data()),
-                                               thrust::raw_pointer_cast(result.values.data()), nR, nC);
+    MatrixKernels::sigmoidDerivative<<<(nR * nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
+        thrust::raw_pointer_cast(values.data()),
+        thrust::raw_pointer_cast(result.values.data()), nR, nC);
 
     return result;
   }
@@ -288,8 +302,9 @@ public:
     ss << "(" << name << ")_Transpose";
     Matrix result(nC, nR, USE_MATRIX_NAMES ? ss.str() : "");
 
-    MatrixKernels::transpose<<<1, 1>>>(thrust::raw_pointer_cast(values.data()),
-                                       thrust::raw_pointer_cast(result.values.data()), nR, nC);
+    MatrixKernels::transpose<<<(nR * nC / MAX_THREADS_PER_BLOCK) + 1, MAX_THREADS_PER_BLOCK>>>(
+        thrust::raw_pointer_cast(values.data()),
+        thrust::raw_pointer_cast(result.values.data()), nR, nC);
     return result;
   }
 

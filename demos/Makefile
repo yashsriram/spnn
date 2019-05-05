@@ -6,6 +6,9 @@ mnist_serial.out: mnist_serial.cpp
 mnist_parallel.out: mnist_parallel.cpp
 	nvcc -x cu mnist_parallel.cpp -o mnist_parallel.out
 
+mnist_gpuserial.out: mnist_gpuserial.cpp
+	nvcc -x cu mnist_gpuserial.cpp -o mnist_gpuserial.out
+
 mnist_openmp.out: mnist_openmp.cpp
 	g++ -fopenmp mnist_openmp.cpp -o mnist_openmp.out
 

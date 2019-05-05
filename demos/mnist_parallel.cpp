@@ -19,7 +19,7 @@ const int FEATURES_LEN = 28 * 28;
 const int FEATURE_MAX_VALUE = 255;
 const int NUM_CLASSES = 10;
 
-const int NUM_EPOCHS = 2;
+const int NUM_EPOCHS = 256;
 const int BATCH_SIZE = 16;
 const float LEARNING_RATE = 0.01;
 
@@ -93,6 +93,8 @@ int main(int argc, char* argv[]) {
   try {
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
+    fnn.addLayer(512);
+    //fnn.addLayer(256);
     fnn.addLayer(128);
     fnn.addLayer(64);
     fnn.addLayer(32);

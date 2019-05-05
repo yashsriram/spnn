@@ -6,8 +6,8 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-#include "../lib/serial/matrix.hpp"
-#include "../lib/serial/nn.hpp"
+#include "../lib/gpuserial/matrix.hpp"
+#include "../lib/gpuserial/nn.hpp"
 
 using namespace std;
 using namespace thrust;
@@ -60,6 +60,30 @@ std::pair< host_vector<float>, host_vector<int>  > parseFile(const string& filep
   return std::pair< host_vector<float>, host_vector<int> >(X, y);
 }
 
+__global__ void makeTrainXBatch(float* matrix, const int nC, const float* train_X, const int* seq, const int NUM_TRAINING_SAMPLES, const int batchNum, const int BATCH_SIZE, const int numFeatures) {
+  for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
+    int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
+    for(int feature_i = 0 ; feature_i < numFeatures; feature_i++ ) {
+      matrix[feature_i * nC + batch_i] = train_X[randomBatch_i * numFeatures + feature_i];
+    }
+  }
+}
+
+__global__ void makeTrainyBatch(float* matrix, const int nC, const int* train_y, const int* seq, const int NUM_TRAINING_SAMPLES, const int batchNum, const int BATCH_SIZE, const int numFeatures) {
+  for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
+    int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
+    for(int feature_i = 0 ; feature_i < numFeatures; feature_i++ ) {
+      matrix[feature_i * nC + batch_i] = train_y[randomBatch_i * numFeatures + feature_i];
+    }
+  }
+}
+
+__global__ void makeTestSample(float* matrix, const int nC, const float* test_X, const int testSample_i, const int numFeatures) {
+  for(int j = 0; j < numFeatures; j++){
+    matrix[j * nC + 0] = test_X[testSample_i * numFeatures + j];
+  }
+}
+
 int main(int argc, char* argv[]) {
   srand(42);
   USE_MATRIX_NAMES = false;
@@ -93,32 +117,50 @@ int main(int argc, char* argv[]) {
     printf("Shape of test_X  : (%d, )\n", test_X.size());
     printf("Shape of test_y  : (%d, )\n", test_y.size());
 
+    device_vector<float> train_X_dev = train_X;
+    device_vector<int> train_y_dev = train_y;
+    device_vector<float> test_X_dev = test_X;
+    device_vector<int> test_y_dev = test_y;
+
     printf("Training start\n");
     const int NUM_TRAINING_SAMPLES = train_X.size() / FEATURES_LEN;
     const int NUM_BATCHES = NUM_TRAINING_SAMPLES / BATCH_SIZE + 1;
+
+    host_vector<int> seq(NUM_TRAINING_SAMPLES);
+    device_vector<int> deviceSeq(NUM_TRAINING_SAMPLES);
+
     /* Mini batch SGD */
     for(int epochNum = 0; epochNum < NUM_EPOCHS; epochNum++) {
       /* shuffling data indices */
-      vector<int> seq(NUM_TRAINING_SAMPLES);
       for(int i = 0; i < NUM_TRAINING_SAMPLES; i++) { seq[i] = i; }
       random_shuffle(seq.begin(), seq.end());
+      deviceSeq = seq;
 
       for(int batchNum = 0; batchNum < NUM_BATCHES; batchNum++) {
         Matrix train_X_miniBatch(FEATURES_LEN, BATCH_SIZE, "train_X minibatch");
-        for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ) {
-          int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
-          for(int feature_i = 0 ; feature_i < FEATURES_LEN; feature_i++ ) {
-            train_X_miniBatch.set(feature_i, batch_i, train_X[randomBatch_i * FEATURES_LEN + feature_i]);
-          }
-        }
+
+        makeTrainXBatch<<< 1, 1 >>>(
+            train_X_miniBatch.getRawPointer(),
+            train_X_miniBatch.nC,
+            raw_pointer_cast(train_X_dev.data()),
+            raw_pointer_cast(deviceSeq.data()),
+            NUM_TRAINING_SAMPLES,
+            batchNum,
+            BATCH_SIZE,
+            FEATURES_LEN
+        );
 
         Matrix train_y_miniBatch(NUM_CLASSES, BATCH_SIZE, "train_y minibatch");
-        for(int batch_i = 0 ; batch_i < BATCH_SIZE; batch_i++ ){
-          int randomBatch_i = seq[(batchNum * BATCH_SIZE + batch_i) % NUM_TRAINING_SAMPLES];
-          for(int feature_i = 0 ; feature_i < NUM_CLASSES; feature_i++ ){
-            train_y_miniBatch.set(feature_i, batch_i, train_y[randomBatch_i * NUM_CLASSES + feature_i]);
-          }
-        }
+        makeTrainyBatch<<< 1, 1 >>>(
+            train_y_miniBatch.getRawPointer(),
+            train_y_miniBatch.nC,
+            raw_pointer_cast(train_y_dev.data()),
+            raw_pointer_cast(deviceSeq.data()),
+            NUM_TRAINING_SAMPLES,
+            batchNum,
+            BATCH_SIZE,
+            NUM_CLASSES
+        );
 
         fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
 
@@ -128,17 +170,22 @@ int main(int argc, char* argv[]) {
     }
     cout << "\r\n";
 
+    printf("Testing start\n");
     /* setting up confusion matrix */
     Matrix confusionMatrix(NUM_CLASSES, NUM_CLASSES, "confusion matrix");
     confusionMatrix.setZeros();
-
-    printf("Testing start\n");
     const int NUM_TESTING_SAMPLES = test_X.size() / FEATURES_LEN;
+    int numCorrect = 0;
+    int total = NUM_TESTING_SAMPLES;
+    Matrix testSample(FEATURES_LEN, 1, "testSample");
     for (int testSample_i = 0; testSample_i < NUM_TESTING_SAMPLES; ++testSample_i) {
-      Matrix testSample(FEATURES_LEN, 1, "testSample");
-      for(int j = 0; j < FEATURES_LEN; j++){
-        testSample.set(j, 0, test_X[testSample_i * FEATURES_LEN + j]);
-      }
+      makeTestSample<<< 1, 1 >>>(
+          testSample.getRawPointer(),
+          testSample.nC,
+          raw_pointer_cast(test_X_dev.data()),
+          testSample_i,
+          FEATURES_LEN
+      );
 
       int actual = -1;
       for(int j = 0; j < NUM_CLASSES; j++){
@@ -157,8 +204,6 @@ int main(int argc, char* argv[]) {
 
     /* prediction analysis */
     cout << confusionMatrix;
-    int numCorrect = 0;
-    int total = NUM_TESTING_SAMPLES;
     for (int i = 0; i < NUM_CLASSES; ++i) {
       numCorrect += confusionMatrix.get(i, i);
     }

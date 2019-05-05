@@ -167,6 +167,20 @@ public:
 
   ~Matrix() { }
 
+  /* Very slow operation. Only use while development in debugging */
+  bool operator==(Matrix const &m) {
+    if (m.nC != nC || m.nR != nR) {
+      return false;
+    }
+
+    for (int i = 0; i < values.size(); ++i) {
+      if (values[i] != m.values[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   int getNumElements() const { return nR * nC; }
 
   void printDims() const { printf("nR = %d, nC = %d\n", nR, nC); }
@@ -279,25 +293,28 @@ public:
     return result;
   }
 
-  Matrix operator+(Matrix const &m) const {
-    if (m.nR == 1 && nC == m.nC) {
+  Matrix biasAdd(Matrix const &bias) const {
+    if (bias.nR == 1 && nC == bias.nC) {
       std::stringstream ss;
-      ss << name << " + " << m.name;
+      ss << name << " + " << bias.name;
       Matrix result(nR, nC, USE_MATRIX_NAMES ? ss.str() : "");
-
-      for (int i = 0; i < nR; ++i) {
-        for (int j = 0; j < nC; ++j) {
-          result.values[i*nC+j] = this->values[i*nC+j] + m.values[j];
-        }
-      }
 
       MatrixKernels::coladd<<<1, 1>>>(
           thrust::raw_pointer_cast(values.data()),
-          thrust::raw_pointer_cast(m.values.data()),
+          thrust::raw_pointer_cast(bias.values.data()),
           thrust::raw_pointer_cast(result.values.data()), nR, nC);
       return result;
     }
 
+    std::stringstream ss;
+    ss <<  "Invalid dimensions for bias addition: Candidates are matrices "
+      << name << "(" << nR << "," << nC << ")"
+      << " and "
+      << bias.name << "(" << bias.nR << "," << bias.nC << ")";
+    throw ss.str();
+  }
+
+  Matrix operator+(Matrix const &m) const {
     if (nR != m.nR || nC != m.nC) {
       std::stringstream ss;
       ss <<  "Invalid dimensions for matrix addition: Candidates are matrices "

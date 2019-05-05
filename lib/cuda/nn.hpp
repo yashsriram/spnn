@@ -4,12 +4,12 @@
 #include "matrix.hpp"
 #include <vector>
 
-__global__ void forwardPassStep(
+__global__ void predictForwardPassStep(
     /* Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid()); */
     float* out, const int outNR, const int outNC,
     const float* in, int inNR, int inNC,
     const float* weightMatrix, int weightMatrixNR, int weightMatrixNC,
-    const float* biasMatrix, int biasMatrixNR, int biasMatrixNC) {
+    const float* biasRowVector, int biasRowLen) {
 
     int myId = blockIdx.x * blockDim.x + threadIdx.x;
     if (myId >= outNR * outNC) { return; }
@@ -24,13 +24,40 @@ __global__ void forwardPassStep(
     }
 
     /* (~*in) * weightMatrix + bias */
-    float inTr_MUL_weights_PLUS_bias = inTr_MUL_weights + biasMatrix[outColNum * biasMatrixNC + outRowNum];
+    float inTr_MUL_weights_PLUS_bias = inTr_MUL_weights + biasRowVector[outColNum * biasRowLen + outRowNum];
 
     /* sigmoid((~*in) * weightMatrix + bias) */
     float inTr_MUL_weights_PLUS_bias_SIGMOID = 1.0 / (1.0 + exp(-inTr_MUL_weights_PLUS_bias));
 
     /* ~(sigmoid((~*in) * weightMatrix + bias)) */
     out[outRowNum * outNC + outColNum] = inTr_MUL_weights_PLUS_bias_SIGMOID;
+}
+
+__global__ void fitForwardPassStep(
+    /* Matrix out = ~(~(*in) * weights[i] [bias add] biases[i]) */
+    /* here bias is a row vector which should be added to all batches */
+    float* out, const int outNR, const int outNC,
+    const float* in, int inNR, int inNC,
+    const float* weightMatrix, int weightMatrixNR, int weightMatrixNC,
+    const float* biasRowVector, int biasRowLen) {
+
+    int myId = blockIdx.x * blockDim.x + threadIdx.x;
+    if (myId >= outNR * outNC) { return; }
+
+    int outRowNum = myId / outNC;
+    int outColNum = myId - outRowNum * outNC;
+
+    /* (~*in) * weightMatrix */
+    float inTr_MUL_weights = 0;
+    for (int k = 0; k < weightMatrixNR; ++k) {
+      inTr_MUL_weights += in[k * inNC + outColNum] * weightMatrix[k * weightMatrixNC + outRowNum];
+    }
+
+    /* (~*in) * weightMatrix [bias add] bias */
+    float inTr_MUL_weights_PLUS_bias = inTr_MUL_weights + biasRowVector[outRowNum];
+
+    /* ~((~*in) * weightMatrix + bias) */
+    out[outRowNum * outNC + outColNum] = inTr_MUL_weights_PLUS_bias;
 }
 
 class FullyConnectedNetwork {
@@ -75,18 +102,6 @@ class FullyConnectedNetwork {
     printf("layer: %d\tnumber of nodes: %d\n", layerDims.size() - 1, layerDims[layerDims.size() - 1]);
     printf("Total number of trainable parameters : %d\n", numTrainableParams);
 
-    for(int i = 0; i < weights.size(); i++) {
-      std::stringstream name;
-      name << "weight_" << i;
-      weights[i].name = name.str();
-    }
-
-    for(int i = 0; i < biases.size(); i++) {
-      std::stringstream name;
-      name << "bias_" << i;
-      biases[i].name = name.str();
-    }
-
     isCompiled = true;
   }
 
@@ -116,12 +131,50 @@ class FullyConnectedNetwork {
     Matrix* out;
     // forward pass
     for(int i = 0; i < weights.size(); i++) {
-      in = new Matrix(~(~(*in) * weights[i] + biases[i]));
-      in->name =  "Input to layer " + std::to_string(i+1);
+      /* An example for debugging fitForwardPassStep kernel */
+      /* Matrix output(3, 4); */
+      /* Matrix input(2, 4); */
+      /* for (int j = 0; j < input.nR; ++j) { */
+      /*   for (int k = 0; k < input.nC; ++k) { */
+      /*     input.set(j, k, j * k); */
+      /*   } */
+      /* } */
+      /* Matrix weightMatrix(2, 3); */
+      /* weightMatrix.setUniform(-1, 1); */
+      /* Matrix biasRowVector(1, 3); */
+      /* biasRowVector.setIdentity(); */
+      /* std::cout << input << std::endl; */
+      /* std::cout << ~(input) << std::endl; */
+      /* std::cout << weightMatrix << std::endl; */
+      /* std::cout << ~(input) * weightMatrix << std::endl; */
+      /* std::cout << biasRowVector << std::endl; */
+      /* std::cout << ~(input) * weightMatrix + biasRowVector << std::endl; */
+      /* std::cout << ~(~(input) * weightMatrix + biasRowVector) << std::endl; */
+
+      /* fitForwardPassStep<<< (output.nR * output.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /*     output.getRawPointer(), output.nR, output.nC, */
+      /*     input.getConstRawPointer(), input.nR, input.nC, */
+      /*     weightMatrix.getConstRawPointer(), weightMatrix.nR, weightMatrix.nC, */
+      /*     biasRowVector.getConstRawPointer(), biasRowVector.nC */
+      /*     ); */
+      /* cudaDeviceSynchronize(); */
+      /* std::cout << output << std::endl; */
+      /* exit(-1); */
+
+      Matrix temp(weights[i].nC, in->nC);
+      fitForwardPassStep<<< (temp.nR * temp.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+          temp.getRawPointer(), temp.nR, temp.nC,
+          in->getConstRawPointer(), in->nR, in->nC,
+          weights[i].getConstRawPointer(), weights[i].nR, weights[i].nC,
+          biases[i].getConstRawPointer(), biases[i].nC
+          );
+
+      in = new Matrix(temp);
       ins.push_back(in);
+
       out = new Matrix(in->sigmoid());
-      out->name =  "Output of layer " + std::to_string(i+1);
       outs.push_back(out);
+
       in = out;
     }
 
@@ -158,34 +211,34 @@ class FullyConnectedNetwork {
   Matrix predict(const Matrix& inputMatrix) const {
     Matrix* in = new Matrix(inputMatrix);
     for(int i = 0; i < weights.size(); i++) {
-      /* An example for debugging forwardPassStep kernel */
+      /* An example for debugging predictForwardPassStep kernel */
       /* Matrix out(3, 1); */
       /* Matrix input(2, 1); */
       /* input.setOnes(); */
       /* Matrix weightMatrix(2, 3); */
       /* weightMatrix.setUniform(-1, 1); */
-      /* Matrix biasMatrix(1, 3); */
-      /* biasMatrix.setIdentity(); */
+      /* Matrix biasRowVector(1, 3); */
+      /* biasRowVector.setIdentity(); */
       /* std::cout << input << std::endl; */
       /* std::cout << weightMatrix << std::endl; */
-      /* std::cout << biasMatrix << std::endl; */
+      /* std::cout << biasRowVector << std::endl; */
 
-      /* forwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /* predictForwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
       /*     out.getRawPointer(), out.nR, out.nC, */
       /*     input.getConstRawPointer(), input.nR, input.nC, */
       /*     weightMatrix.getConstRawPointer(), weightMatrix.nR, weightMatrix.nC, */
-      /*     biasMatrix.getConstRawPointer(), biasMatrix.nR, biasMatrix.nC */
+      /*     biasRowVector.getConstRawPointer(), biasRowVector.nC */
       /*     ); */
       /* cudaDeviceSynchronize(); */
       /* std::cout << out << std::endl; */
       /* exit(-1); */
 
       Matrix out(weights[i].nC, in->nC);
-      forwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+      predictForwardPassStep<<< (out.nR * out.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
           out.getRawPointer(), out.nR, out.nC,
           in->getConstRawPointer(), in->nR, in->nC,
           weights[i].getConstRawPointer(), weights[i].nR, weights[i].nC,
-          biases[i].getConstRawPointer(), biases[i].nR, biases[i].nC
+          biases[i].getConstRawPointer(), biases[i].nC
           );
 
       delete in;

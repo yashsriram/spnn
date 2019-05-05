@@ -71,6 +71,21 @@ int main() {
     std::pair<int, int> argmax = randomized.argmax();
     printf("Max of randomized = %f @ (%d, %d)\n", randomized.get(argmax.first, argmax.second), argmax.first, argmax.second);
 
+    Matrix MAT1(10, 10, "MAT1");
+    MAT1.setIdentity();
+    Matrix MAT2(10, 10, "MAT2");
+    MAT2.setIdentity();
+    Matrix MAT3(10, 10, "MAT2");
+    MAT3.setIdentity();
+    MAT3.set(9, 8, 7);
+
+    std::cout << MAT1 << std::endl;
+    std::cout << MAT2 << std::endl;
+    std::cout << "MAT1 == MAT2:\t" << (MAT1 == MAT2) << std::endl;
+
+    std::cout << MAT3 << std::endl;
+    std::cout << "MAT1 == MAT3:\t" << (MAT1 == MAT3) << std::endl;
+
   } catch (std::string e) {
     std::cerr << e << std::endl;
   }

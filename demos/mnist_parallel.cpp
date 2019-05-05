@@ -91,6 +91,14 @@ int main(int argc, char* argv[]) {
   printf("\nConfig:\n\tTRAIN_FILE_PATH: %s\n\tTEST_FILE_PATH: %s\n\tFEATURES_LEN: %d\n\tFEATURE_MAX_VALUE: %d\n\tNUM_CLASSES: %d\n\tNUM_EPOCHS: %d\n\tBATCH_SIZE: %d\n\tLEARNING_RATE: %f\n", TRAIN_FILE_PATH.c_str(), TEST_FILE_PATH.c_str(), FEATURES_LEN, FEATURE_MAX_VALUE, NUM_CLASSES, NUM_EPOCHS, BATCH_SIZE, LEARNING_RATE);
 
   try {
+    auto fnn = FullyConnectedNetwork();
+    fnn.addLayer(FEATURES_LEN);
+    fnn.addLayer(128);
+    fnn.addLayer(64);
+    fnn.addLayer(32);
+    fnn.addLayer(NUM_CLASSES);
+    fnn.compile();
+
     host_vector<float> train_X;
     host_vector<int> train_y;
     auto train_Xy = parseFile(TRAIN_FILE_PATH);
@@ -111,14 +119,6 @@ int main(int argc, char* argv[]) {
     device_vector<int> train_y_dev = train_y;
     device_vector<float> test_X_dev = test_X;
     device_vector<int> test_y_dev = test_y;
-
-    auto fnn = FullyConnectedNetwork();
-    fnn.addLayer(FEATURES_LEN);
-    fnn.addLayer(128);
-    fnn.addLayer(64);
-    fnn.addLayer(32);
-    fnn.addLayer(NUM_CLASSES);
-    fnn.compile();
 
     printf("Training start\n");
     const int NUM_TRAINING_SAMPLES = train_X.size() / FEATURES_LEN;
@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
             NUM_CLASSES
         );
 
-        /* fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE); */
+        fnn.fit(train_X_miniBatch, train_y_miniBatch, LEARNING_RATE);
 
         cout << "Epoch : (" << epochNum + 1 << "/" << NUM_EPOCHS << ") Batch: [" << batchNum + 1 << "/" << NUM_BATCHES << "]\r";
         cout.flush();

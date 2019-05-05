@@ -91,6 +91,7 @@ int main(int argc, char* argv[]) {
 
     auto fnn = FullyConnectedNetwork();
     fnn.addLayer(FEATURES_LEN);
+    fnn.addLayer(1024);
     fnn.addLayer(512);
     fnn.addLayer(256);
     fnn.addLayer(128);

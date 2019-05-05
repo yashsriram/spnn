@@ -12,5 +12,7 @@ mnist_gpuserial.out: mnist_gpuserial.cpp
 mnist_openmp.out: mnist_openmp.cpp
 	g++ -fopenmp mnist_openmp.cpp -o mnist_openmp.out
 
+mnist_openblas.out : mnist_openblas.cpp
+	g++ -std=c++11 mnist_openblas.cpp -o mnist_openblas.out -I /opt/OpenBLAS/include/ -L/opt/OpenBLAS/lib -lopenblas  -lpthread
 clean:
 	rm -f mnist_serial.out mnist_parallel.out mnist_openmp.out

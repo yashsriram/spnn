@@ -20,3 +20,4 @@
 - [x] Normalize
 - [x] Get MNIST data
 - [x] Profile
+- [ ] Remove data loading from time taken

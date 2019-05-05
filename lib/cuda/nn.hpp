@@ -60,7 +60,7 @@ __global__ void fitForwardPassStep(
     out[outRowNum * outNC + outColNum] = inTr_MUL_weights_PLUS_bias;
 }
 
-__global__ void fitBackpropStep(
+__global__ void deltaCalcStep(
     /* Matrix temp = ins[i]->sigmoidDerivative() % (weights[i + 1] * *delta) */
     float* out, const int outNR, const int outNC,
     const float* in, const int inNR, const int inNC,
@@ -84,7 +84,33 @@ __global__ void fitBackpropStep(
     float inValSigmoid = 1.0 / (1.0 + exp(-inVal));
     float inValSigmoidDer = inValSigmoid - inValSigmoid * inValSigmoid;
     out[outRowNum * inNC + outColNum] = inValSigmoidDer * mulRes;
+}
 
+__global__ void weightUpdateStep(
+    /* weights[i] = weights[i] + (*outs[i]) * (~*delta) * learningRate; */
+    float* weightMatrix, const int weightMatrixNR, const int weightMatrixNC,
+    const float* out, const int outNR, const int outNC,
+    const float* delta, const int deltaNR, const int deltaNC,
+    const float learningRate
+    ) {
+
+    int myId = blockIdx.x * blockDim.x + threadIdx.x;
+    if (myId >= weightMatrixNR * weightMatrixNC) { return; }
+
+    int weightMatrixRowNum = myId / weightMatrixNC;
+    int weightMatrixColNum = myId - weightMatrixRowNum * weightMatrixNC;
+
+    /* (*outs[i]) * (~*delta) */
+    float mulRes = 0;
+    for (int k = 0; k < outNC; ++k) {
+      mulRes += out[weightMatrixRowNum * outNC + k] * delta[weightMatrixColNum * deltaNC + k];
+    }
+
+    /* (*outs[i]) * (~*delta) * learningRate; */
+    mulRes = mulRes * learningRate;
+
+    /* weights[i] = weights[i] + (*outs[i]) * (~*delta) * learningRate; */
+    weightMatrix[weightMatrixRowNum * weightMatrixNC + weightMatrixColNum] += mulRes;
 }
 
 class FullyConnectedNetwork {
@@ -212,7 +238,7 @@ class FullyConnectedNetwork {
     weights[i] = weights[i] + change * learningRate;
 
     for(int i = weights.size() - 2 ; i >= 0; i--) {
-      /* An example for debugging fitBackpropStep kernel */
+      /* An example for debugging deltaCalcStep kernel */
       /* Matrix output(2, 3); */
       /* Matrix input(2, 3); */
       /* for (int j = 0; j < input.nR; ++j) { */
@@ -225,7 +251,7 @@ class FullyConnectedNetwork {
       /* Matrix del(3, 3); */
       /* del.setIdentity(); */
 
-      /* fitBackpropStep<<< (output.nR * output.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /* deltaCalcStep<<< (output.nR * output.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
       /*     output.getRawPointer(), output.nR, output.nC, */
       /*     input.getConstRawPointer(), input.nR, input.nC, */
       /*     weightMatrix.getConstRawPointer(), weightMatrix.nR, weightMatrix.nC, */
@@ -237,7 +263,7 @@ class FullyConnectedNetwork {
       /* exit(-1); */
 
       Matrix temp(ins[i]->nR, ins[i]->nC);
-      fitBackpropStep<<< (temp.nR * temp.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+      deltaCalcStep<<< (temp.nR * temp.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
           temp.getRawPointer(), temp.nR, temp.nC,
           ins[i]->getConstRawPointer(), ins[i]->nR, ins[i]->nC,
           weights[i + 1].getConstRawPointer(), weights[i + 1].nR, weights[i + 1].nC,
@@ -249,8 +275,40 @@ class FullyConnectedNetwork {
       delete delta;
       delta = delta2;
 
-      Matrix change = (*outs[i]) * (~*delta);
-      weights[i] = weights[i] + change * learningRate;
+      /* An example for debugging weightUpdateStep kernel */
+      /* Matrix weightMatrix(2, 4); */
+      /* weightMatrix.setUniform(-1, 1); */
+      /* Matrix output(2, 3); */
+      /* for (int j = 0; j < output.nR; ++j) { */
+      /*   for (int k = 0; k < output.nC; ++k) { */
+      /*     output.set(j, k, j * k); */
+      /*   } */
+      /* } */
+      /* Matrix del(4, 3); */
+      /* del.setOnes(); */
+
+      /* std::cout << weightMatrix << std::endl; */
+      /* std::cout << output << std::endl; */
+      /* std::cout << del << std::endl; */
+      /* std::cout << (output * ~del) << std::endl; */
+      /* std::cout << (output * ~del) * learningRate << std::endl; */
+      /* std::cout << weightMatrix + (output * ~del) * learningRate << std::endl; */
+      /* weightUpdateStep<<< (weightMatrix.nR * weightMatrix.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /*     weightMatrix.getRawPointer(), weightMatrix.nR, weightMatrix.nC, */
+      /*     output.getConstRawPointer(), output.nR, output.nC, */
+      /*     del.getConstRawPointer(), del.nR, del.nC, */
+      /*     0.01 */
+      /*     ); */
+      /* cudaDeviceSynchronize(); */
+      /* std::cout << weightMatrix << std::endl; */
+      /* exit(-1); */
+
+      weightUpdateStep<<< (weights[i].nR * weights[i].nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+          weights[i].getRawPointer(), weights[i].nR, weights[i].nC,
+          outs[i]->getConstRawPointer(), outs[i]->nR, outs[i]->nC,
+          delta->getConstRawPointer(), delta->nR, delta->nC,
+          learningRate);
+      cudaDeviceSynchronize();
     }
 
     for(auto it : ins){

@@ -6,6 +6,11 @@
   * time profile (nvprof)
 * Initialization done uniformly in -1 to 1
 * Layers are numbered from 0 i.e. first hidden layer is layer 1
+* Versions
+  * CPU - Serial
+  * GPU - Serial
+  * GPU - kernels
+  * openMP
 
 # Todo
 - [x] Control size of name field

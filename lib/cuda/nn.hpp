@@ -7,9 +7,9 @@
 __global__ void predictForwardPassStep(
     /* Matrix out = ~((~(*in) * weights[i] + biases[i]).sigmoid()); */
     float* out, const int outNR, const int outNC,
-    const float* in, int inNR, int inNC,
-    const float* weightMatrix, int weightMatrixNR, int weightMatrixNC,
-    const float* biasRowVector, int biasRowLen) {
+    const float* in, const int inNR, const int inNC,
+    const float* weightMatrix, const int weightMatrixNR, const int weightMatrixNC,
+    const float* biasRowVector, const int biasRowLen) {
 
     int myId = blockIdx.x * blockDim.x + threadIdx.x;
     if (myId >= outNR * outNC) { return; }
@@ -37,9 +37,9 @@ __global__ void fitForwardPassStep(
     /* Matrix out = ~(~(*in) * weights[i] [bias add] biases[i]) */
     /* here bias is a row vector which should be added to all batches */
     float* out, const int outNR, const int outNC,
-    const float* in, int inNR, int inNC,
-    const float* weightMatrix, int weightMatrixNR, int weightMatrixNC,
-    const float* biasRowVector, int biasRowLen) {
+    const float* in, const int inNR, const int inNC,
+    const float* weightMatrix, const int weightMatrixNR, const int weightMatrixNC,
+    const float* biasRowVector, const int biasRowLen) {
 
     int myId = blockIdx.x * blockDim.x + threadIdx.x;
     if (myId >= outNR * outNC) { return; }
@@ -58,6 +58,33 @@ __global__ void fitForwardPassStep(
 
     /* ~((~*in) * weightMatrix + bias) */
     out[outRowNum * outNC + outColNum] = inTr_MUL_weights_PLUS_bias;
+}
+
+__global__ void fitBackpropStep(
+    /* Matrix temp = ins[i]->sigmoidDerivative() % (weights[i + 1] * *delta) */
+    float* out, const int outNR, const int outNC,
+    const float* in, const int inNR, const int inNC,
+    const float* weightMatrix, const int weightMatrixNR, const int weightMatrixNC,
+    const float* delta, const int deltaNR, const int deltaNC) {
+
+    int myId = blockIdx.x * blockDim.x + threadIdx.x;
+    if (myId >= outNR * outNC) { return; }
+
+    int outRowNum = myId / outNC;
+    int outColNum = myId - outRowNum * outNC;
+
+    /* weights[i + 1] * *delta */
+    float mulRes = 0;
+    for (int k = 0; k < weightMatrixNC; ++k) {
+      mulRes += weightMatrix[outRowNum * weightMatrixNC + k] * delta[k * deltaNC + outColNum];
+    }
+
+    /* out = ins[i]->sigmoidDerivative() % (weights[i + 1] * *delta) */
+    float inVal = in[outRowNum * inNC + outColNum];
+    float inValSigmoid = 1.0 / (1.0 + exp(-inVal));
+    float inValSigmoidDer = inValSigmoid - inValSigmoid * inValSigmoid;
+    out[outRowNum * inNC + outColNum] = inValSigmoidDer * mulRes;
+
 }
 
 class FullyConnectedNetwork {
@@ -143,12 +170,6 @@ class FullyConnectedNetwork {
       /* weightMatrix.setUniform(-1, 1); */
       /* Matrix biasRowVector(1, 3); */
       /* biasRowVector.setIdentity(); */
-      /* std::cout << input << std::endl; */
-      /* std::cout << ~(input) << std::endl; */
-      /* std::cout << weightMatrix << std::endl; */
-      /* std::cout << ~(input) * weightMatrix << std::endl; */
-      /* std::cout << biasRowVector << std::endl; */
-      /* std::cout << ~(input) * weightMatrix + biasRowVector << std::endl; */
       /* std::cout << ~(~(input) * weightMatrix + biasRowVector) << std::endl; */
 
       /* fitForwardPassStep<<< (output.nR * output.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
@@ -168,6 +189,7 @@ class FullyConnectedNetwork {
           weights[i].getConstRawPointer(), weights[i].nR, weights[i].nC,
           biases[i].getConstRawPointer(), biases[i].nC
           );
+      cudaDeviceSynchronize();
 
       in = new Matrix(temp);
       ins.push_back(in);
@@ -186,15 +208,47 @@ class FullyConnectedNetwork {
     // backprop
     Matrix* delta;
     delta = new Matrix((target - outs[i + 1]->softmax()) % ins[i]->sigmoidDerivative());
-    delta->name = "delta";
     Matrix change = (*outs[i]) * (~*delta);
     weights[i] = weights[i] + change * learningRate;
 
-    for(int i = weights.size() - 2 ; i >= 0; i--){
-      Matrix* delta2 = new Matrix( (ins[i]->sigmoidDerivative()) % (weights[i+1] * *delta) );
-      delta->name = "delta2";
+    for(int i = weights.size() - 2 ; i >= 0; i--) {
+      /* An example for debugging fitBackpropStep kernel */
+      /* Matrix output(2, 3); */
+      /* Matrix input(2, 3); */
+      /* for (int j = 0; j < input.nR; ++j) { */
+      /*   for (int k = 0; k < input.nC; ++k) { */
+      /*     input.set(j, k, j * k); */
+      /*   } */
+      /* } */
+      /* Matrix weightMatrix(2, 3); */
+      /* weightMatrix.setUniform(-1, 1); */
+      /* Matrix del(3, 3); */
+      /* del.setIdentity(); */
+
+      /* fitBackpropStep<<< (output.nR * output.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>( */
+      /*     output.getRawPointer(), output.nR, output.nC, */
+      /*     input.getConstRawPointer(), input.nR, input.nC, */
+      /*     weightMatrix.getConstRawPointer(), weightMatrix.nR, weightMatrix.nC, */
+      /*     del.getConstRawPointer(), del.nR, del.nC */
+      /*     ); */
+      /* cudaDeviceSynchronize(); */
+      /* std::cout <<  input.sigmoidDerivative() % (weightMatrix * del) << std::endl; */
+      /* std::cout << output << std::endl; */
+      /* exit(-1); */
+
+      Matrix temp(ins[i]->nR, ins[i]->nC);
+      fitBackpropStep<<< (temp.nR * temp.nC / MAX_THREADS_PER_BLOCK) + 1 , MAX_THREADS_PER_BLOCK >>>(
+          temp.getRawPointer(), temp.nR, temp.nC,
+          ins[i]->getConstRawPointer(), ins[i]->nR, ins[i]->nC,
+          weights[i + 1].getConstRawPointer(), weights[i + 1].nR, weights[i + 1].nC,
+          delta->getConstRawPointer(), delta->nR, delta->nC
+          );
+      cudaDeviceSynchronize();
+      Matrix* delta2 = new Matrix(temp);
+
       delete delta;
       delta = delta2;
+
       Matrix change = (*outs[i]) * (~*delta);
       weights[i] = weights[i] + change * learningRate;
     }
@@ -240,6 +294,7 @@ class FullyConnectedNetwork {
           weights[i].getConstRawPointer(), weights[i].nR, weights[i].nC,
           biases[i].getConstRawPointer(), biases[i].nC
           );
+      cudaDeviceSynchronize();
 
       delete in;
       in = new Matrix(out);

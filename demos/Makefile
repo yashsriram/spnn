@@ -1,4 +1,4 @@
-all: mnist_serial.out mnist_parallel.out mnist_openmp.out
+all: mnist_serial.out mnist_parallel.out mnist_openmp.out mnist_gpuserial.out mnist_openblas.out
 
 mnist_serial.out: mnist_serial.cpp
 	nvcc -x cu mnist_serial.cpp -o mnist_serial.out
@@ -14,5 +14,6 @@ mnist_openmp.out: mnist_openmp.cpp
 
 mnist_openblas.out : mnist_openblas.cpp
 	g++ -std=c++11 mnist_openblas.cpp -o mnist_openblas.out -I /opt/OpenBLAS/include/ -L/opt/OpenBLAS/lib -lopenblas  -lpthread
+
 clean:
 	rm -f mnist_serial.out mnist_parallel.out mnist_openmp.out

@@ -1,5 +1,2 @@
 *.out
 tags
-/.vscode/*
-data/mnist/
-*.memchk

@@ -54,15 +54,12 @@
 ![](./github/time_vs_params.png)
 
 ## roadmap
-# Points
-* Things to consider during analysis
-  * correctness (> 10% accuracy)
-  * repeatablity (nothing fancy)
-  * memory check (no mem leaks or other bad stuff using valgrind --tool=memcheck)
-  * time profile (nvprof)
-* Initialization done uniformly in -1 to 1
-* Layers are numbered from 0 i.e. first hidden layer is layer 1
-# Todo
+- Things to consider during analysis
+  - [x] correctness (> 10% accuracy)
+  - [x] repeatablity (nothing fancy)
+  - [x] memory check (no mem leaks or other bad stuff using valgrind --tool=memcheck)
+- [x] Initialization done uniformly in -1 to 1
+- [x] Layers are numbered from 0 i.e. first hidden layer is layer 1
 - [x] Control size of name field
 - [x] Impl loss function
 - [x] Remove memleaks from step_train

@@ -1,7 +1,8 @@
 # spnn
 
 ## description
-- A comparision of fully connected network (forward and backward propagation) implementations.
+- spnn: simple parallelized neural network.
+- A comparison of fully connected network (forward and backward propagation) implementations.
 - Implementations are listed below,
     1. CPU single thread.
     1. CPU multiple threads using openmp.
